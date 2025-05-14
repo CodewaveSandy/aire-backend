@@ -1,8 +1,15 @@
-import dotenv from "dotenv";
-import app from "./app";
+import "dotenv/config";
+import express from "express";
+import mongoose from "mongoose";
+import cookieParser from "cookie-parser";
+import userRoutes from "./routes/userRoutes";
 import { connectDB } from "./config/database";
 
-dotenv.config();
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+
+app.use("/api/users", userRoutes);
 
 const PORT = process.env.PORT || 5000;
 
