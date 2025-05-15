@@ -17,6 +17,10 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 
 // Routes
+app.use("/", (_req, res) => {
+  successResponse(res, null, "APP is healthy");
+  return;
+});
 app.use("/api/health", (_req, res) => {
   successResponse(res, null, "API is healthy");
   return;
