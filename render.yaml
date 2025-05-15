@@ -1,7 +1,7 @@
 services:
   - type: web
     name: aire-backend
-    env: node
+    runtime: node
     plan: free
     branch: main
     buildCommand: npm install
@@ -10,9 +10,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGO_URI
-        fromEnvVar: MONGO_URI
+        sync: false
       - key: JWT_SECRET
-        fromEnvVar: JWT_SECRET
+        sync: false
       - key: JWT_EXPIRATION
         value: 1h
 
