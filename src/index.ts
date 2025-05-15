@@ -1,8 +1,9 @@
+import "./types/express-augments";
 import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
-import userRoutes from "./routes/userRoutes";
+import userRoutes from "./routes/user.routes";
 import { connectDB } from "./config/database";
 
 const app = express();
