@@ -6,6 +6,7 @@ import {
 } from "../controllers/user.controller";
 import { authMiddleware, authorize } from "../middleware/auth.middleware";
 import { logger } from "../config/logger";
+import { successResponse } from "../utils/response.utils";
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.get("/me", authMiddleware, getCurrentUser);
 
 // Example of a protected route with role restriction
 router.get("/hr-only", authMiddleware, authorize("hr"), (_req, res) => {
-  res.success({ message: "HR only resource" });
+  successResponse(res, { message: "HR only resource" });
 });
 
 export default router;

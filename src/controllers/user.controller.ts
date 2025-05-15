@@ -3,6 +3,7 @@ import { AppError } from "../middleware/error.middleware";
 import { logger } from "../config/logger";
 import { createToken, setCookie } from "../utils/jwt.utils";
 import { User, IUser } from "../models/user.model";
+import { failedResponse, successResponse } from "../utils/response.utils";
 
 // Register a new user
 export const registerUser = async (
@@ -23,7 +24,7 @@ export const registerUser = async (
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       logger.warn(`Registration failed: Email already in use: ${email}`);
-      res.fail("Email already in use");
+      failedResponse(res, "Email already in use");
       return;
     }
 
@@ -41,7 +42,7 @@ export const registerUser = async (
     logger.info(`User registered successfully: ${userId}`);
 
     // Return success response with user data
-    res.success(user, "User registered successfully");
+    successResponse(res, user, "User registered successfully");
   } catch (error) {
     logger.error("Error registering user:", error);
     next(error);
@@ -61,7 +62,7 @@ export const loginUser = async (
     // Validate email and password
     if (!email || !password) {
       logger.warn("Login failed: Missing email or password");
-      res.fail("Please provide email and password");
+      failedResponse(res, "Please provide email and password");
       return;
     }
 
@@ -71,7 +72,7 @@ export const loginUser = async (
     // Check if user exists
     if (!user) {
       logger.warn(`Login failed: No user found with email: ${email}`);
-      res.fail("Invalid email or password");
+      failedResponse(res, "Invalid email or password");
       return;
     }
 
@@ -79,7 +80,7 @@ export const loginUser = async (
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       logger.warn(`Login failed: Invalid password for user: ${email}`);
-      res.fail("Invalid email or password");
+      failedResponse(res, "Invalid email or password");
       return;
     }
 
@@ -93,7 +94,7 @@ export const loginUser = async (
     logger.info(`User logged in successfully: ${userId}`);
 
     // Return success response with user data
-    res.success(user, "Login successful");
+    successResponse(res, user, "Login successful");
   } catch (error) {
     logger.error("Error logging in user:", error);
     next(error);
@@ -131,7 +132,7 @@ export const getCurrentUser = async (
       throw new AppError("Authentication required", 401);
     }
 
-    res.success(req.user, "User profile retrieved successfully");
+    successResponse(res, req.user, "User profile retrieved successfully");
   } catch (error) {
     logger.error("Error getting current user:", error);
     next(error);

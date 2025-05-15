@@ -1,4 +1,3 @@
-import "./types/express-augments";
 import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";

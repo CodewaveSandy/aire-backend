@@ -20,34 +20,6 @@ app.use(express.json());
 app.use(responseMiddleware);
 app.use(morgan("dev"));
 
-// Custom response middleware
-app.use((_req: Request, res: Response, next: NextFunction) => {
-  res.success = function (data: any, message?: string) {
-    return res.json({
-      status: "success",
-      data,
-      message: message || "Operation successful",
-    });
-  };
-
-  res.fail = function (message: string, errors?: any) {
-    return res.status(400).json({
-      status: "fail",
-      message,
-      errors,
-    });
-  };
-
-  res.error = function (message: string, statusCode: number = 500) {
-    return res.status(statusCode).json({
-      status: "error",
-      message,
-    });
-  };
-
-  next();
-});
-
 // Routes
 app.use("/api/users", userRoutes);
 

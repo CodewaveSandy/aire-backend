@@ -1,0 +1,42 @@
+{"level":"info","message":"Connecting to MongoDB...","service":"api-service","timestamp":"2025-05-15 23:38:55"}
+{"level":"info","message":"MongoDB connection established successfully","service":"api-service","timestamp":"2025-05-15 23:38:58"}
+{"level":"info","message":"Connecting to MongoDB...","service":"api-service","timestamp":"2025-05-15 23:39:16"}
+{"level":"info","message":"MongoDB connection established successfully","service":"api-service","timestamp":"2025-05-15 23:39:19"}
+{"level":"debug","message":"User route accessed: POST /api/users/login","service":"api-service","timestamp":"2025-05-15 23:39:32"}
+{"level":"info","message":"User login attempt","service":"api-service","timestamp":"2025-05-15 23:39:32"}
+{"level":"warn","message":"Login failed: No user found with email: Sandy@codewave.com","service":"api-service","timestamp":"2025-05-15 23:39:33"}
+{"level":"debug","message":"User route accessed: POST /api/users","service":"api-service","timestamp":"2025-05-15 23:40:17"}
+{"level":"debug","message":"User route accessed: POST /api/users/register","service":"api-service","timestamp":"2025-05-15 23:40:40"}
+{"level":"info","message":"Registering new user","service":"api-service","timestamp":"2025-05-15 23:40:40"}
+{"email":"Sandy@codewave.com","level":"debug","message":"Registration data:","name":"Sandip Dhang","password":"***HIDDEN***","role":"hr","service":"api-service","timestamp":"2025-05-15 23:40:40"}
+{"level":"info","message":"User registered successfully: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:40:41"}
+{"level":"debug","message":"User route accessed: POST /api/users/login","service":"api-service","timestamp":"2025-05-15 23:41:06"}
+{"level":"info","message":"User login attempt","service":"api-service","timestamp":"2025-05-15 23:41:06"}
+{"level":"debug","message":"Creating JWT token for user ID: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:41:07"}
+{"level":"debug","message":"Setting JWT cookie","service":"api-service","timestamp":"2025-05-15 23:41:07"}
+{"level":"info","message":"User logged in successfully: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:41:07"}
+{"level":"info","message":"Connecting to MongoDB...","service":"api-service","timestamp":"2025-05-15 23:42:02"}
+{"level":"info","message":"MongoDB connection established successfully","service":"api-service","timestamp":"2025-05-15 23:42:05"}
+{"level":"debug","message":"User route accessed: POST /api/users/login","service":"api-service","timestamp":"2025-05-15 23:42:08"}
+{"level":"info","message":"User login attempt","service":"api-service","timestamp":"2025-05-15 23:42:08"}
+{"level":"warn","message":"Login failed: Invalid password for user: Sandy@codewave.com","service":"api-service","timestamp":"2025-05-15 23:42:08"}
+{"level":"debug","message":"User route accessed: POST /api/users/me","service":"api-service","timestamp":"2025-05-15 23:44:02"}
+{"level":"debug","message":"User route accessed: GET /api/users/me","service":"api-service","timestamp":"2025-05-15 23:44:08"}
+{"level":"debug","message":"Validating authentication token","service":"api-service","timestamp":"2025-05-15 23:44:08"}
+{"level":"debug","message":"Token verified for user ID: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:44:08"}
+{"level":"debug","message":"Getting user by ID: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:44:08"}
+{"level":"info","message":"Getting current user profile","service":"api-service","timestamp":"2025-05-15 23:44:08"}
+{"level":"debug","message":"User route accessed: GET /api/users/me","service":"api-service","timestamp":"2025-05-15 23:44:49"}
+{"level":"debug","message":"Validating authentication token","service":"api-service","timestamp":"2025-05-15 23:44:49"}
+{"level":"warn","message":"Authentication failed: No token provided","service":"api-service","timestamp":"2025-05-15 23:44:49"}
+{"level":"debug","message":"User route accessed: POST /api/users/login","service":"api-service","timestamp":"2025-05-15 23:45:15"}
+{"level":"info","message":"User login attempt","service":"api-service","timestamp":"2025-05-15 23:45:15"}
+{"level":"debug","message":"Creating JWT token for user ID: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:45:16"}
+{"level":"debug","message":"Setting JWT cookie","service":"api-service","timestamp":"2025-05-15 23:45:16"}
+{"level":"info","message":"User logged in successfully: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:45:16"}
+{"level":"debug","message":"User route accessed: GET /api/users/me","service":"api-service","timestamp":"2025-05-15 23:45:28"}
+{"level":"debug","message":"Validating authentication token","service":"api-service","timestamp":"2025-05-15 23:45:28"}
+{"level":"debug","message":"Token verified for user ID: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:45:28"}
+{"level":"debug","message":"Getting user by ID: 68262e20c89b754418f18643","service":"api-service","timestamp":"2025-05-15 23:45:28"}
+{"level":"info","message":"Getting current user profile","service":"api-service","timestamp":"2025-05-15 23:45:28"}
+{"level":"warn","message":"MongoDB disconnected","service":"api-service","timestamp":"2025-05-15 23:46:05"}
