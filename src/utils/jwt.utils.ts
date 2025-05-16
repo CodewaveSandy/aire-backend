@@ -34,11 +34,11 @@ export const setCookie = (res: Response, token: string): void => {
         Date.now() + parseInt(JWT_COOKIE_EXPIRES_IN) * 24 * 60 * 60 * 1000
       ),
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Only use secure in production
+      secure: process.env.NODE_ENV === "production", // required for HTTPS
     };
 
     logger.debug("Setting JWT cookie");
-    res.cookie("jwt", token, cookieOptions);
+    res.cookie("jwt", token, { ...cookieOptions, sameSite: "none" });
   } catch (error) {
     logger.error(`Error setting JWT cookie: ${error}`);
     throw new Error("Error setting authentication cookie");
