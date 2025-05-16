@@ -32,10 +32,10 @@ const setCookie = (res, token) => {
         const cookieOptions = {
             expires: new Date(Date.now() + parseInt(JWT_COOKIE_EXPIRES_IN) * 24 * 60 * 60 * 1000),
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // Only use secure in production
+            secure: process.env.NODE_ENV === "production", // required for HTTPS
         };
         logger_1.logger.debug("Setting JWT cookie");
-        res.cookie("jwt", token, cookieOptions);
+        res.cookie("jwt", token, { ...cookieOptions, sameSite: "none" });
     }
     catch (error) {
         logger_1.logger.error(`Error setting JWT cookie: ${error}`);

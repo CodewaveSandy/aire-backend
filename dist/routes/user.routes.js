@@ -17,6 +17,7 @@ router.post("/register", user_controller_1.registerUser);
 router.post("/login", user_controller_1.loginUser);
 // Get current user (protected route)
 router.get("/me", auth_middleware_1.authMiddleware, user_controller_1.getCurrentUser);
+router.get("/check-auth", auth_middleware_1.authMiddleware, user_controller_1.getCurrentUser);
 // Example of a protected route with role restriction
 router.get("/hr-only", auth_middleware_1.authMiddleware, (0, auth_middleware_1.authorize)("hr"), (_req, res) => {
     (0, response_utils_1.successResponse)(res, { message: "HR only resource" });
