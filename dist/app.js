@@ -12,6 +12,7 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const response_utils_1 = require("./utils/response.utils");
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const skill_routes_1 = __importDefault(require("./routes/skill.routes"));
+const jobOpening_routes_1 = __importDefault(require("./routes/jobOpening.routes"));
 const app = (0, express_1.default)();
 // Middleware
 app.use((0, helmet_1.default)());
@@ -29,5 +30,6 @@ app.use("/api/health", (_req, res) => {
 });
 app.use("/api/users", user_routes_1.default);
 app.use("/api/skills", skill_routes_1.default);
+app.use("/api/jobs", jobOpening_routes_1.default);
 exports.default = app;
 //# sourceMappingURL=app.js.map

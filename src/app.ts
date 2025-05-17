@@ -8,6 +8,7 @@ import { successResponse } from "./utils/response.utils";
 
 import userRoutes from "./routes/user.routes";
 import skillRoutes from "./routes/skill.routes";
+import jobOpeningRoutes from "./routes/jobOpening.routes";
 
 const app: Application = express();
 
@@ -30,6 +31,7 @@ app.use("/api/health", (_req, res) => {
 });
 app.use("/api/users", userRoutes);
 app.use("/api/skills", skillRoutes);
+app.use("/api/jobs", jobOpeningRoutes);
 
 export default app;
 
