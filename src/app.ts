@@ -4,8 +4,10 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import userRoutes from "./routes/user.routes";
 import { successResponse } from "./utils/response.utils";
+
+import userRoutes from "./routes/user.routes";
+import skillRoutes from "./routes/skill.routes";
 
 const app: Application = express();
 
@@ -27,6 +29,7 @@ app.use("/api/health", (_req, res) => {
   return;
 });
 app.use("/api/users", userRoutes);
+app.use("/api/skills", skillRoutes);
 
 export default app;
 
