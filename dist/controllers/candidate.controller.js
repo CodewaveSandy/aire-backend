@@ -1,9 +1,15 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteCandidate = exports.updateCandidate = exports.getCandidateById = exports.getAllCandidates = exports.createCandidate = void 0;
+exports.parseResume = exports.deleteCandidate = exports.updateCandidate = exports.getCandidateById = exports.getAllCandidates = exports.createCandidate = void 0;
 const candidate_model_1 = require("../models/candidate.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
+const axios_1 = __importDefault(require("axios"));
+const form_data_1 = __importDefault(require("form-data"));
+const fs_1 = __importDefault(require("fs"));
 // Create
 const createCandidate = async (req, res, next) => {
     try {
@@ -77,4 +83,31 @@ const deleteCandidate = async (req, res, next) => {
     }
 };
 exports.deleteCandidate = deleteCandidate;
+// Parsing Resume
+const parseResume = async (req, res, next) => {
+    try {
+        if (!req.file || !req.file.path) {
+            (0, response_utils_1.failedResponse)(res, "No resume file uploaded");
+        }
+        const filePath = req?.file?.path;
+        const form = new form_data_1.default();
+        form.append("file", fs_1.default.createReadStream(filePath || ""));
+        const response = await axios_1.default.post(`${process.env.PARSER_LINK}/parse`, form, {
+            headers: {
+                ...form.getHeaders(),
+                "x-api-key": process.env.PYTHON_API_KEY || "",
+            },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+        });
+        const { data } = response.data;
+        (0, response_utils_1.successResponse)(res, data, "Resume parsed successfully");
+    }
+    catch (err) {
+        logger_1.logger.error("Error calling Python service:", err);
+        (0, response_utils_1.failedResponse)(res, "Failed to parse resume via Python service");
+        next(err);
+    }
+};
+exports.parseResume = parseResume;
 //# sourceMappingURL=candidate.controller.js.map

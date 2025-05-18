@@ -6,6 +6,7 @@ const auth_middleware_1 = require("../middleware/auth.middleware");
 const filter_middleware_1 = require("../middleware/filter.middleware");
 const pagination_middleware_1 = require("../middleware/pagination.middleware");
 const candidate_model_1 = require("../models/candidate.model");
+const upload_utils_1 = require("../utils/upload.utils");
 const router = (0, express_1.Router)();
 router.use(auth_middleware_1.authMiddleware);
 router.post("/", (0, auth_middleware_1.authorize)("hr"), candidate_controller_1.createCandidate);
@@ -19,5 +20,6 @@ router.get("/", (0, filter_middleware_1.filterMiddleware)({
 router.get("/:id", candidate_controller_1.getCandidateById);
 router.put("/:id", (0, auth_middleware_1.authorize)("hr"), candidate_controller_1.updateCandidate);
 router.delete("/:id", (0, auth_middleware_1.authorize)("hr"), candidate_controller_1.deleteCandidate);
+router.post("/parse-resume", (0, auth_middleware_1.authorize)("hr"), upload_utils_1.resumeUpload.single("resume"), candidate_controller_1.parseResume);
 exports.default = router;
 //# sourceMappingURL=candidate.routes.js.map

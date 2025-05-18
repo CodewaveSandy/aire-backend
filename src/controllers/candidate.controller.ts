@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { Candidate } from "../models/candidate.model";
 import { successResponse, failedResponse } from "../utils/response.utils";
 import { logger } from "../config/logger";
+import axios from "axios";
+import FormData from "form-data";
+import fs from "fs";
 
 // Create
 export const createCandidate = async (
@@ -95,6 +98,45 @@ export const deleteCandidate = async (
   } catch (error) {
     logger.error("Error deleting candidate:", error);
     next(error);
+  }
+};
+
+// Parsing Resume
+
+export const parseResume = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.file || !req.file.path) {
+      failedResponse(res, "No resume file uploaded");
+    }
+
+    const filePath = req?.file?.path;
+    const form = new FormData();
+    form.append("file", fs.createReadStream(filePath || ""));
+
+    const response = await axios.post(
+      `${process.env.PARSER_LINK}/parse`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          "x-api-key": process.env.PYTHON_API_KEY || "",
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      }
+    );
+
+    const { data } = response.data;
+
+    successResponse(res, data, "Resume parsed successfully");
+  } catch (err) {
+    logger.error("Error calling Python service:", err);
+    failedResponse(res, "Failed to parse resume via Python service");
+    next(err);
   }
 };
 

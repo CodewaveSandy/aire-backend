@@ -5,11 +5,13 @@ import {
   getCandidateById,
   updateCandidate,
   deleteCandidate,
+  parseResume,
 } from "../controllers/candidate.controller";
 import { authMiddleware, authorize } from "../middleware/auth.middleware";
 import { filterMiddleware } from "../middleware/filter.middleware";
 import { paginationMiddleware } from "../middleware/pagination.middleware";
 import { Candidate } from "../models/candidate.model";
+import { resumeUpload } from "../utils/upload.utils";
 
 const router = Router();
 
@@ -33,6 +35,12 @@ router.get(
 router.get("/:id", getCandidateById);
 router.put("/:id", authorize("hr"), updateCandidate);
 router.delete("/:id", authorize("hr"), deleteCandidate);
+router.post(
+  "/parse-resume",
+  authorize("hr"),
+  resumeUpload.single("resume"),
+  parseResume
+);
 
 export default router;
 
