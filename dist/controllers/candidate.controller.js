@@ -6,10 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseResume = exports.deleteCandidate = exports.updateCandidate = exports.getCandidateById = exports.getAllCandidates = exports.createCandidate = void 0;
 const candidate_model_1 = require("../models/candidate.model");
 const response_utils_1 = require("../utils/response.utils");
+const parser_utils_1 = require("../utils/parser.utils");
 const logger_1 = require("../config/logger");
-const axios_1 = __importDefault(require("axios"));
-const form_data_1 = __importDefault(require("form-data"));
 const fs_1 = __importDefault(require("fs"));
+const textract_1 = __importDefault(require("textract"));
+const pdf_parse_1 = __importDefault(require("pdf-parse"));
+const path_1 = __importDefault(require("path"));
 // Create
 const createCandidate = async (req, res, next) => {
     try {
@@ -89,23 +91,34 @@ const parseResume = async (req, res, next) => {
         if (!req.file || !req.file.path) {
             (0, response_utils_1.failedResponse)(res, "No resume file uploaded");
         }
-        const filePath = req?.file?.path;
-        const form = new form_data_1.default();
-        form.append("file", fs_1.default.createReadStream(filePath || ""));
-        const response = await axios_1.default.post(`${process.env.PARSER_LINK}/parse`, form, {
-            headers: {
-                ...form.getHeaders(),
-                "x-api-key": process.env.PYTHON_API_KEY || "",
-            },
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-        });
-        const { data } = response.data;
+        const filePath = req?.file?.path || "";
+        const ext = path_1.default.extname(filePath).toLowerCase();
+        let extractedText;
+        if (ext === ".pdf") {
+            const fileBuffer = fs_1.default.readFileSync(filePath);
+            const pdfData = await (0, pdf_parse_1.default)(fileBuffer);
+            extractedText = pdfData.text;
+        }
+        else {
+            extractedText = await new Promise((resolve, reject) => {
+                textract_1.default.fromFileWithPath(filePath, (err, text) => {
+                    if (err || !text)
+                        return reject(err || new Error("Empty text"));
+                    resolve(text);
+                });
+            });
+        }
+        fs_1.default.unlink(filePath, () => { }); // Cleanup uploaded file
+        const data = {
+            name: (0, parser_utils_1.extractName)(extractedText),
+            email: (0, parser_utils_1.extractEmail)(extractedText),
+            phone: (0, parser_utils_1.extractPhone)(extractedText),
+        };
         (0, response_utils_1.successResponse)(res, data, "Resume parsed successfully");
     }
     catch (err) {
-        logger_1.logger.error("Error calling Python service:", err);
-        (0, response_utils_1.failedResponse)(res, "Failed to parse resume via Python service");
+        logger_1.logger.error("Error during resume parsing:", err);
+        (0, response_utils_1.failedResponse)(res, "Failed to parse resume");
         next(err);
     }
 };

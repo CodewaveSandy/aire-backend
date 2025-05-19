@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { Candidate } from "../models/candidate.model";
 import { successResponse, failedResponse } from "../utils/response.utils";
+import { extractEmail, extractName, extractPhone } from "../utils/parser.utils";
 import { logger } from "../config/logger";
-import axios from "axios";
-import FormData from "form-data";
 import fs from "fs";
+import textract from "textract";
+import pdfParse from "pdf-parse";
+import path from "path";
 
 // Create
 export const createCandidate = async (
@@ -113,29 +115,36 @@ export const parseResume = async (
       failedResponse(res, "No resume file uploaded");
     }
 
-    const filePath = req?.file?.path;
-    const form = new FormData();
-    form.append("file", fs.createReadStream(filePath || ""));
+    const filePath = req?.file?.path || "";
+    const ext = path.extname(filePath).toLowerCase();
 
-    const response = await axios.post(
-      `${process.env.PARSER_LINK}/parse`,
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-          "x-api-key": process.env.PYTHON_API_KEY || "",
-        },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-      }
-    );
+    let extractedText: string;
 
-    const { data } = response.data;
+    if (ext === ".pdf") {
+      const fileBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdfParse(fileBuffer);
+      extractedText = pdfData.text;
+    } else {
+      extractedText = await new Promise<string>((resolve, reject) => {
+        textract.fromFileWithPath(filePath, (err, text) => {
+          if (err || !text) return reject(err || new Error("Empty text"));
+          resolve(text);
+        });
+      });
+    }
+
+    fs.unlink(filePath, () => {}); // Cleanup uploaded file
+
+    const data = {
+      name: extractName(extractedText),
+      email: extractEmail(extractedText),
+      phone: extractPhone(extractedText),
+    };
 
     successResponse(res, data, "Resume parsed successfully");
   } catch (err) {
-    logger.error("Error calling Python service:", err);
-    failedResponse(res, "Failed to parse resume via Python service");
+    logger.error("Error during resume parsing:", err);
+    failedResponse(res, "Failed to parse resume");
     next(err);
   }
 };
