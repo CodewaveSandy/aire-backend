@@ -4,15 +4,15 @@ exports.getSkillById = exports.deleteSkill = exports.updateSkill = exports.getAl
 const skill_model_1 = require("../models/skill.model");
 const logger_1 = require("../config/logger");
 const response_utils_1 = require("../utils/response.utils");
+const skill_service_1 = require("../services/skill.service");
 const createSkill = async (req, res, next) => {
     try {
-        const { name } = req.body;
-        const slug = name.toLowerCase().trim().replace(/\s+/g, "-");
-        const existing = await skill_model_1.Skill.findOne({ slug });
-        if (existing)
-            return (0, response_utils_1.failedResponse)(res, "Skill already exists");
-        const skill = await skill_model_1.Skill.create({ name, slug });
-        (0, response_utils_1.successResponse)(res, skill, "Skill created");
+        const { name, aliases } = req.body;
+        if (!name || typeof name !== "string") {
+            return (0, response_utils_1.failedResponse)(res, "Skill name is required and must be a string.");
+        }
+        const skill = await (0, skill_service_1.findOrCreateSkill)(name, aliases);
+        (0, response_utils_1.successResponse)(res, skill, "Skill created or already exists");
     }
     catch (error) {
         logger_1.logger.error("Error creating skill:", error);

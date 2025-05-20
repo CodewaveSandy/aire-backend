@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractPhone = exports.extractEmail = exports.extractName = void 0;
+exports.extractRelevantSections = exports.extractPhone = exports.extractEmail = exports.extractName = void 0;
 const extractName = (text) => {
     const FAMILY_LABELS = [
         "father",
@@ -69,4 +69,55 @@ const extractPhone = (text) => {
     return match ? match[0] : null;
 };
 exports.extractPhone = extractPhone;
+const extractRelevantSections = (text) => {
+    const sectionHeaderKeywords = [
+        "skills",
+        "technical skills",
+        "tools",
+        "technologies",
+        "languages known",
+        "experience",
+        "work experience",
+        "professional experience",
+        "employment history",
+        "projects",
+        "roles & responsibility",
+        "technology used",
+    ];
+    const sectionStopKeywords = [
+        "education",
+        "certification",
+        "declaration",
+        "objective",
+        "summary",
+        "contact",
+        "personal info",
+    ];
+    const normalize = (s) => s.trim().toLowerCase();
+    const lines = text.split(/\r?\n/).map((l) => l.trimEnd());
+    const collected = [];
+    let isCollecting = false;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const normalized = normalize(line);
+        // Start if a line matches a header
+        if (sectionHeaderKeywords.some((keyword) => normalized === keyword || normalized.includes(keyword))) {
+            isCollecting = true;
+            collected.push(`\n### ${line.toUpperCase()} ###`);
+            continue;
+        }
+        // Stop if a known non-relevant section starts
+        if (isCollecting &&
+            sectionStopKeywords.some((keyword) => normalized === keyword || normalized.includes(keyword))) {
+            isCollecting = false;
+            continue;
+        }
+        // If collecting and not hitting a new unrelated section, collect the line
+        if (isCollecting) {
+            collected.push(line);
+        }
+    }
+    return collected.join("\n").trim();
+};
+exports.extractRelevantSections = extractRelevantSections;
 //# sourceMappingURL=parser.utils.js.map

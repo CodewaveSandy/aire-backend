@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { Skill } from "../models/skill.model";
 import { logger } from "../config/logger";
 import { failedResponse, successResponse } from "../utils/response.utils";
+import { findOrCreateSkill } from "../services/skill.service";
 
 export const createSkill = async (
   req: Request,
@@ -9,14 +10,17 @@ export const createSkill = async (
   next: NextFunction
 ) => {
   try {
-    const { name } = req.body;
-    const slug = name.toLowerCase().trim().replace(/\s+/g, "-");
+    const { name, aliases } = req.body;
 
-    const existing = await Skill.findOne({ slug });
-    if (existing) return failedResponse(res, "Skill already exists");
+    if (!name || typeof name !== "string") {
+      return failedResponse(
+        res,
+        "Skill name is required and must be a string."
+      );
+    }
 
-    const skill = await Skill.create({ name, slug });
-    successResponse(res, skill, "Skill created");
+    const skill = await findOrCreateSkill(name, aliases);
+    successResponse(res, skill, "Skill created or already exists");
   } catch (error) {
     logger.error("Error creating skill:", error);
     next(error);

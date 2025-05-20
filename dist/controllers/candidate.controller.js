@@ -12,6 +12,8 @@ const fs_1 = __importDefault(require("fs"));
 const textract_1 = __importDefault(require("textract"));
 const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const path_1 = __importDefault(require("path"));
+const openai_1 = require("../config/openai");
+const skill_service_1 = require("../services/skill.service");
 // Create
 const createCandidate = async (req, res, next) => {
     try {
@@ -89,11 +91,14 @@ exports.deleteCandidate = deleteCandidate;
 const parseResume = async (req, res, next) => {
     try {
         if (!req.file || !req.file.path) {
+            logger_1.logger.warn("No resume file uploaded");
             (0, response_utils_1.failedResponse)(res, "No resume file uploaded");
         }
         const filePath = req?.file?.path || "";
         const ext = path_1.default.extname(filePath).toLowerCase();
-        let extractedText;
+        let extractedText = "";
+        logger_1.logger.info(`Parsing resume from file: ${filePath} (type: ${ext})`);
+        // Step 1: Extract raw text
         if (ext === ".pdf") {
             const fileBuffer = fs_1.default.readFileSync(filePath);
             const pdfData = await (0, pdf_parse_1.default)(fileBuffer);
@@ -108,13 +113,69 @@ const parseResume = async (req, res, next) => {
                 });
             });
         }
+        logger_1.logger.info("Text extraction complete. Cleaning up uploaded file.");
         fs_1.default.unlink(filePath, () => { }); // Cleanup uploaded file
-        const data = {
-            name: (0, parser_utils_1.extractName)(extractedText),
-            email: (0, parser_utils_1.extractEmail)(extractedText),
-            phone: (0, parser_utils_1.extractPhone)(extractedText),
+        // Step 2: Extract personal info
+        const name = (0, parser_utils_1.extractName)(extractedText);
+        const email = (0, parser_utils_1.extractEmail)(extractedText);
+        const phone = (0, parser_utils_1.extractPhone)(extractedText);
+        logger_1.logger.info(`Extracted personal info - Name: ${name || "N/A"}, Email: ${email || "N/A"}, Phone: ${phone || "N/A"}`);
+        // Step 3: Anonymize
+        let anonymizedText = extractedText;
+        if (name)
+            anonymizedText = anonymizedText.replace(new RegExp(name, "gi"), "[REDACTED_NAME]");
+        if (email)
+            anonymizedText = anonymizedText.replace(new RegExp(email, "gi"), "[REDACTED_EMAIL]");
+        if (phone)
+            anonymizedText = anonymizedText.replace(new RegExp(phone, "gi"), "[REDACTED_PHONE]");
+        // Step 4: Extract relevant content for OpenAI
+        const relevantResumeText = (0, parser_utils_1.extractRelevantSections)(anonymizedText);
+        logger_1.logger.info("Relevant sections extracted for OpenAI prompt.");
+        const prompt = `From the resume content below, extract the following in strict JSON format:
+
+- An array of technical or professional skills (omit soft skills or general terms like 'frontend development')
+- Total professional experience in years (e.g. "3.5", "4")
+
+Resume content may include technologies used in projects or mentioned inline. Focus on developer tools, frameworks, libraries, and platforms.
+
+Return ONLY this format:
+{
+  "skills": [...],
+  "experienceInYears": "..."
+}
+
+Resume Text:
+"""
+${relevantResumeText}
+"""`;
+        // Step 5: Send to OpenAI
+        logger_1.logger.info("Sending prompt to OpenAI...");
+        const completion = await openai_1.openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [{ role: "user", content: prompt }],
+        });
+        const aiReply = completion.choices[0]?.message?.content || "{}";
+        logger_1.logger.info("OpenAI response received.");
+        let parsedJson;
+        try {
+            parsedJson = JSON.parse(aiReply);
+        }
+        catch (err) {
+            logger_1.logger.warn("Failed to parse OpenAI response. Defaulting to empty data.");
+            parsedJson = { skills: [], experienceInYears: "0" };
+        }
+        // Step 6: Resolve skills to DB
+        logger_1.logger.info(`Resolving ${parsedJson.skills.length} skills against database...`);
+        const resolvedSkills = await (0, skill_service_1.resolveSkillsFromText)(parsedJson.skills || []);
+        const result = {
+            name,
+            email,
+            phone,
+            skills: resolvedSkills,
+            experienceInYears: parsedJson.experienceInYears || "0",
         };
-        (0, response_utils_1.successResponse)(res, data, "Resume parsed successfully");
+        logger_1.logger.info("Resume parsing completed successfully.");
+        (0, response_utils_1.successResponse)(res, result, "Resume parsed and skills resolved successfully");
     }
     catch (err) {
         logger_1.logger.error("Error during resume parsing:", err);

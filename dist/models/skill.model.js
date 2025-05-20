@@ -5,6 +5,7 @@ const mongoose_1 = require("mongoose");
 const skillSchema = new mongoose_1.Schema({
     name: { type: String, required: true, unique: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true },
+    aliases: { type: [String], default: [] }, // ✅ new field
 }, {
     timestamps: true,
     toJSON: {
