@@ -22,19 +22,18 @@ const storage = multer_1.default.diskStorage({
     },
 });
 exports.resumeUpload = (0, multer_1.default)({
-    storage,
+    dest: uploadDir,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
     fileFilter: (_req, file, cb) => {
-        const allowedTypes = [
+        const allowed = [
             "application/pdf",
+            "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ];
-        if (allowedTypes.includes(file.mimetype)) {
+        if (allowed.includes(file.mimetype))
             cb(null, true);
-        }
-        else {
-            cb(new Error("Only PDF and DOCX files are allowed"));
-        }
+        else
+            cb(new Error("Only PDF/DOC/DOCX files are allowed"));
     },
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 //# sourceMappingURL=upload.utils.js.map

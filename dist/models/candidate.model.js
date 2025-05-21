@@ -11,6 +11,7 @@ const candidateSchema = new mongoose_1.Schema({
     experience: { type: Number, required: true, min: 0 },
     education: { type: String },
     about: { type: String },
+    resumeUrl: { type: String },
     status: {
         type: String,
         enum: ["active", "hired", "blacklisted"],

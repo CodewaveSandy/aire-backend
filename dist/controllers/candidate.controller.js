@@ -14,10 +14,24 @@ const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const path_1 = __importDefault(require("path"));
 const openai_1 = require("../config/openai");
 const skill_service_1 = require("../services/skill.service");
+const r2_utils_1 = require("../utils/r2.utils");
 // Create
 const createCandidate = async (req, res, next) => {
     try {
-        const candidate = new candidate_model_1.Candidate(req.body);
+        let resumeUrl;
+        if (req.file) {
+            logger_1.logger.info("Uploading resume to R2...");
+            resumeUrl = await (0, r2_utils_1.uploadToR2)(req.file, req.body.fullName);
+            // Cleanup local file
+            await fs_1.default.unlink(req.file.path, (err) => {
+                if (err)
+                    logger_1.logger.error("Failed to delete temp file:", err);
+            });
+        }
+        const candidate = new candidate_model_1.Candidate({
+            ...req.body,
+            resumeUrl,
+        });
         await candidate.save();
         (0, response_utils_1.successResponse)(res, candidate, "Candidate created");
     }
