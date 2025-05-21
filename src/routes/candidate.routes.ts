@@ -17,7 +17,12 @@ const router = Router();
 
 router.use(authMiddleware);
 
-router.post("/", authorize("hr"), createCandidate);
+router.post(
+  "/",
+  authorize("hr"),
+  resumeUpload.single("resume"),
+  createCandidate
+);
 
 router.get(
   "/",

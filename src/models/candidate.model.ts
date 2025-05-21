@@ -11,6 +11,7 @@ export interface ICandidate extends Document {
   about?: string;
   status: "active" | "hired" | "blacklisted";
   socialLinks?: string[];
+  resumeUrl?: string;
 }
 
 const candidateSchema = new Schema<ICandidate>(
@@ -23,6 +24,7 @@ const candidateSchema = new Schema<ICandidate>(
     experience: { type: Number, required: true, min: 0 },
     education: { type: String },
     about: { type: String },
+    resumeUrl: { type: String },
     status: {
       type: String,
       enum: ["active", "hired", "blacklisted"],

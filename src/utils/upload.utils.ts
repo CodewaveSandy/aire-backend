@@ -4,6 +4,7 @@ import fs from "fs";
 
 // Create local directory if not exists
 const uploadDir = path.join(__dirname, "../../uploads/resumes");
+
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -19,18 +20,16 @@ const storage = multer.diskStorage({
 });
 
 export const resumeUpload = multer({
-  storage,
+  dest: uploadDir,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
-    const allowedTypes = [
+    const allowed = [
       "application/pdf",
+      "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only PDF and DOCX files are allowed"));
-    }
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF/DOC/DOCX files are allowed"));
   },
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 

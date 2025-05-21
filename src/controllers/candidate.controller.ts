@@ -14,6 +14,7 @@ import pdfParse from "pdf-parse";
 import path from "path";
 import { openai } from "../config/openai";
 import { resolveSkillsFromText } from "../services/skill.service";
+import { uploadToR2 } from "../utils/r2.utils";
 
 // Create
 export const createCandidate = async (
@@ -22,7 +23,22 @@ export const createCandidate = async (
   next: NextFunction
 ) => {
   try {
-    const candidate = new Candidate(req.body);
+    let resumeUrl;
+
+    if (req.file) {
+      logger.info("Uploading resume to R2...");
+      resumeUrl = await uploadToR2(req.file, req.body.fullName);
+      // Cleanup local file
+      await fs.unlink(req.file.path, (err) => {
+        if (err) logger.error("Failed to delete temp file:", err);
+      });
+    }
+
+    const candidate = new Candidate({
+      ...req.body,
+      resumeUrl,
+    });
+
     await candidate.save();
     successResponse(res, candidate, "Candidate created");
   } catch (error) {
