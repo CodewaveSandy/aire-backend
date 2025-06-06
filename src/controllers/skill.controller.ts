@@ -30,7 +30,7 @@ export const createSkill = async (
 
     const flattened = {
       ...orgSkill,
-      skillId: skill._id,
+      _id: skill._id,
       name: skill.name,
       slug: skill.slug,
       aliases: skill.aliases,
@@ -81,7 +81,7 @@ export const getAllSkills = async (
 
       const results = rawResults.map(({ skill, ...orgSkill }) => ({
         ...orgSkill,
-        skillId: skill?._id, // optional: rename skill _id
+        skillId: skill?._id,
         ...skill,
       }));
 

@@ -16,6 +16,7 @@ import { openai } from "../config/openai";
 import { resolveSkillsFromText } from "../services/skill.service";
 import { uploadToR2 } from "../utils/r2.utils";
 import mongoose from "mongoose";
+import { OrgSkill } from "../models/orgSkill.model";
 
 // Create
 export const createCandidate = async (
@@ -237,7 +238,15 @@ ${relevantResumeText}
       `Resolving ${parsedJson.skills.length} skills against database...`
     );
     const resolvedSkills = await resolveSkillsFromText(parsedJson.skills || []);
-
+    await Promise.all(
+      resolvedSkills.map((skill) =>
+        OrgSkill.findOneAndUpdate(
+          { organization: req.user?.organization, skill: skill._id },
+          { isActive: true },
+          { upsert: true, new: true }
+        )
+      )
+    );
     const result = {
       name,
       email,

@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 });
 
 export const resumeUpload = multer({
-  dest: uploadDir,
+  storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
     const allowed = [
