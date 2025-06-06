@@ -14,26 +14,25 @@ const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const path_1 = __importDefault(require("path"));
 const openai_1 = require("../config/openai");
 const skill_service_1 = require("../services/skill.service");
-const r2_utils_1 = require("../utils/r2.utils");
+// import { uploadToR2 } from "../utils/r2.utils";
 const mongoose_1 = __importDefault(require("mongoose"));
 const orgSkill_model_1 = require("../models/orgSkill.model");
 // Create
 const createCandidate = async (req, res, next) => {
     try {
         let resumeUrl;
-        if (req.file) {
-            logger_1.logger.info("Uploading resume to R2...");
-            resumeUrl = await (0, r2_utils_1.uploadToR2)(req.file, req.body.fullName);
-            // Cleanup local file
-            await fs_1.default.unlink(req.file.path, (err) => {
-                if (err)
-                    logger_1.logger.error("Failed to delete temp file:", err);
-            });
-        }
+        // if (req.file) {
+        //   logger.info("Uploading resume to R2...");
+        //   resumeUrl = await uploadToR2(req.file, req.body.fullName);
+        //   // Cleanup local file
+        //   await fs.unlink(req.file.path, (err) => {
+        //     if (err) logger.error("Failed to delete temp file:", err);
+        //   });
+        // }
         const candidate = new candidate_model_1.Candidate({
             ...req.body,
             organization: new mongoose_1.default.Types.ObjectId(req.user?.organization || ""),
-            resumeUrl,
+            resumeUrl: "https://pub-a93aa22471974b57849917c5e1db78e5.r2.dev/Sandip%20Dhang%20-%20Resume.pdf",
         });
         await candidate.save();
         (0, response_utils_1.successResponse)(res, candidate, "Candidate created");
@@ -152,13 +151,19 @@ const parseResume = async (req, res, next) => {
 
 - An array of technical or professional skills (omit soft skills or general terms like 'frontend development')
 - Total professional experience in years (e.g. "3.5", "4")
+- Breif description of the candidate's technical expertise that can be use as About summary
+- Location
+- Highest Education degree level (e.g. "Bachelor's", "Master's", "PhD")
 
 Resume content may include technologies used in projects or mentioned inline. Focus on developer tools, frameworks, libraries, and platforms.
 
 Return ONLY this format:
 {
   "skills": [...],
-  "experienceInYears": "..."
+  "experienceInYears": "...",
+  about: "...",
+  location: "...",
+  education: "..."
 }
 
 Resume Text:
@@ -179,7 +184,13 @@ ${relevantResumeText}
         }
         catch (err) {
             logger_1.logger.warn("Failed to parse OpenAI response. Defaulting to empty data.");
-            parsedJson = { skills: [], experienceInYears: "0" };
+            parsedJson = {
+                skills: [],
+                experienceInYears: "0",
+                about: "",
+                location: "",
+                education: "",
+            };
         }
         // Step 6: Resolve skills to DB
         logger_1.logger.info(`Resolving ${parsedJson.skills.length} skills against database...`);
@@ -191,6 +202,9 @@ ${relevantResumeText}
             phone,
             skills: resolvedSkills,
             experienceInYears: parsedJson.experienceInYears || "0",
+            about: parsedJson.about || "",
+            location: parsedJson.location || "",
+            education: parsedJson.education || "",
         };
         logger_1.logger.info("Resume parsing completed successfully.");
         (0, response_utils_1.successResponse)(res, result, "Resume parsed and skills resolved successfully");

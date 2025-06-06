@@ -14,7 +14,7 @@ import pdfParse from "pdf-parse";
 import path from "path";
 import { openai } from "../config/openai";
 import { resolveSkillsFromText } from "../services/skill.service";
-import { uploadToR2 } from "../utils/r2.utils";
+// import { uploadToR2 } from "../utils/r2.utils";
 import mongoose from "mongoose";
 import { OrgSkill } from "../models/orgSkill.model";
 
@@ -27,19 +27,20 @@ export const createCandidate = async (
   try {
     let resumeUrl;
 
-    if (req.file) {
-      logger.info("Uploading resume to R2...");
-      resumeUrl = await uploadToR2(req.file, req.body.fullName);
-      // Cleanup local file
-      await fs.unlink(req.file.path, (err) => {
-        if (err) logger.error("Failed to delete temp file:", err);
-      });
-    }
+    // if (req.file) {
+    //   logger.info("Uploading resume to R2...");
+    //   resumeUrl = await uploadToR2(req.file, req.body.fullName);
+    //   // Cleanup local file
+    //   await fs.unlink(req.file.path, (err) => {
+    //     if (err) logger.error("Failed to delete temp file:", err);
+    //   });
+    // }
 
     const candidate = new Candidate({
       ...req.body,
       organization: new mongoose.Types.ObjectId(req.user?.organization || ""),
-      resumeUrl,
+      resumeUrl:
+        "https://pub-a93aa22471974b57849917c5e1db78e5.r2.dev/Sandip%20Dhang%20-%20Resume.pdf",
     });
 
     await candidate.save();
@@ -201,13 +202,19 @@ export const parseResume = async (
 
 - An array of technical or professional skills (omit soft skills or general terms like 'frontend development')
 - Total professional experience in years (e.g. "3.5", "4")
+- Breif description of the candidate's technical expertise that can be use as About summary
+- Location
+- Highest Education degree level (e.g. "Bachelor's", "Master's", "PhD")
 
 Resume content may include technologies used in projects or mentioned inline. Focus on developer tools, frameworks, libraries, and platforms.
 
 Return ONLY this format:
 {
   "skills": [...],
-  "experienceInYears": "..."
+  "experienceInYears": "...",
+  about: "...",
+  location: "...",
+  education: "..."
 }
 
 Resume Text:
@@ -225,12 +232,24 @@ ${relevantResumeText}
     const aiReply = completion.choices[0]?.message?.content || "{}";
     logger.info("OpenAI response received.");
 
-    let parsedJson: { skills: string[]; experienceInYears: string };
+    let parsedJson: {
+      skills: string[];
+      experienceInYears: string;
+      about: string;
+      location: string;
+      education: string;
+    };
     try {
       parsedJson = JSON.parse(aiReply);
     } catch (err) {
       logger.warn("Failed to parse OpenAI response. Defaulting to empty data.");
-      parsedJson = { skills: [], experienceInYears: "0" };
+      parsedJson = {
+        skills: [],
+        experienceInYears: "0",
+        about: "",
+        location: "",
+        education: "",
+      };
     }
 
     // Step 6: Resolve skills to DB
@@ -253,6 +272,9 @@ ${relevantResumeText}
       phone,
       skills: resolvedSkills,
       experienceInYears: parsedJson.experienceInYears || "0",
+      about: parsedJson.about || "",
+      location: parsedJson.location || "",
+      education: parsedJson.education || "",
     };
 
     logger.info("Resume parsing completed successfully.");
