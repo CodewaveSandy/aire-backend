@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 import bcrypt from "bcryptjs";
 
 export interface IUser extends Document {
@@ -6,6 +6,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: "hr" | "interviewer";
+  organization: Types.ObjectId;
   comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -32,6 +33,11 @@ const userSchema = new Schema<IUser>(
     role: {
       type: String,
       enum: ["hr", "interviewer"],
+      required: true,
+    },
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
       required: true,
     },
   },

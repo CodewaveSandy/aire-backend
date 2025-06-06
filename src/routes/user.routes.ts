@@ -7,6 +7,8 @@ import {
 import { authMiddleware, authorize } from "../middleware/auth.middleware";
 import { logger } from "../config/logger";
 import { successResponse } from "../utils/response.utils";
+import { validate } from "../middleware/validate.middleware";
+import { registerUserSchema } from "../validators/user.schema";
 
 const router = Router();
 
@@ -17,7 +19,7 @@ router.use((req, _res, next) => {
 });
 
 // Register a new user
-router.post("/register", registerUser);
+router.post("/register", validate(registerUserSchema), registerUser);
 
 // Login user
 router.post("/login", loginUser);

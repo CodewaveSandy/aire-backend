@@ -4,6 +4,8 @@ import { logger } from "../config/logger";
 import { createToken, setCookie } from "../utils/jwt.utils";
 import { User, IUser } from "../models/user.model";
 import { failedResponse, successResponse } from "../utils/response.utils";
+import { OrganizationModel } from "../models/organization.model";
+import { slugify } from "../utils/common.utils";
 
 // Register a new user
 export const registerUser = async (
@@ -18,7 +20,7 @@ export const registerUser = async (
       password: "***HIDDEN***",
     });
 
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, organization, isNewOrg } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -28,20 +30,49 @@ export const registerUser = async (
       return;
     }
 
-    // Create new user
+    let orgId;
+
+    // Handle organization logic
+    if (isNewOrg) {
+      const existingOrg = await OrganizationModel.findOne({
+        name: new RegExp(`^${organization}$`, "i"), // case-insensitive check
+        isDelete: false,
+      });
+
+      if (existingOrg) {
+        logger.info(
+          `Organization already exists, using existing orgId: ${existingOrg._id}`
+        );
+        orgId = existingOrg._id;
+      } else {
+        const slug = slugify(organization);
+        const newOrg = await OrganizationModel.create({
+          name: organization,
+          slug,
+          logoUrl:
+            "https://codewave-wp.gumlet.io/wp-content/uploads/2024/03/codew-logo.png",
+          isActive: true,
+          isDelete: false,
+        });
+        orgId = newOrg._id;
+        logger.info(`New organization created: ${orgId}`);
+      }
+    } else {
+      orgId = organization; // expecting this to be ObjectId string
+    }
+
+    // Create and save user
     const user = new User({
       name,
       email,
       password,
       role,
+      organization: orgId,
     });
 
-    // Save user to database
     await user.save();
-    const userId = user._id ? user._id.toString() : "unknown";
-    logger.info(`User registered successfully: ${userId}`);
+    logger.info(`User registered successfully: ${user._id}`);
 
-    // Return success response with user data
     successResponse(res, user, "User registered successfully");
   } catch (error) {
     logger.error("Error registering user:", error);

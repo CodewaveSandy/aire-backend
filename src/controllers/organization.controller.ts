@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { OrganizationModel } from "../models/organization.model";
 import { logger } from "../config/logger";
 import { failedResponse, successResponse } from "../utils/response.utils";
-import { slugify } from "../utils/r2.utils";
+import { slugify } from "../utils/common.utils";
 
 // Define create organization controller
 export const createOrganization = async (

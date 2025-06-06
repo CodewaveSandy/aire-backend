@@ -18,27 +18,26 @@ router.use((req, _res, next) => {
   next();
 });
 
-router.use(authMiddleware);
-
 // Add Organazation route
 router.post(
   "/",
+  authMiddleware,
   authorize("hr"),
   orgLogoUpload.single("orgLogo"),
   createOrganization
 );
 
 // Get all organization
-router.get("/", authorize("hr"), getAllOrganisation);
+router.get("/", getAllOrganisation);
 
 // Get organiation by id
-router.get("/:id", authorize("hr"), getOrganizationById);
+router.get("/:id", authMiddleware, authorize("hr"), getOrganizationById);
 
 // update organiation by id
-router.post("/:id", authorize("hr"), updateOrganizationById);
+router.post("/:id", authMiddleware, authorize("hr"), updateOrganizationById);
 
 // Delete organiation by id
-router.delete("/:id", authorize("hr"), deleteOrganizationById);
+router.delete("/:id", authMiddleware, authorize("hr"), deleteOrganizationById);
 
 export default router;
 
