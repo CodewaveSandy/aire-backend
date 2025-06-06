@@ -31,5 +31,6 @@ router.get("/", (0, filter_middleware_1.filterMiddleware)({
 router.get("/:id", jobOpening_controller_1.getJobOpeningById);
 router.put("/:id", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.updateJobOpening);
 router.delete("/:id", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.deleteJobOpening);
+router.get("/:id/suggestions", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.getRankedCandidates);
 exports.default = router;
 //# sourceMappingURL=jobOpening.routes.js.map

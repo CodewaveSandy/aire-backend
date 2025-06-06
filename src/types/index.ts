@@ -1,5 +1,8 @@
 import { Request } from "express";
 import { IUser } from "../models/user.model";
+import { IJobOpening } from "../models/jobOpening.model";
+import { ISkill } from "../models/skill.model";
+import { ICandidate } from "../models/candidate.model";
 
 // Extended Request interface with user
 export interface AuthRequest extends Request {
@@ -27,4 +30,14 @@ export interface RegisterRequestBody {
   password: string;
   role: "hr" | "interviewer";
 }
+
+export type JobWithSkills = Omit<IJobOpening, "skills"> & { skills: ISkill[] };
+export type CandidateWithSkills = Omit<ICandidate, "skills"> & {
+  skills: ISkill[];
+};
+
+export type RankedCandidate = CandidateWithSkills & {
+  matchPercentage: number;
+  matchedSkills: string[];
+};
 

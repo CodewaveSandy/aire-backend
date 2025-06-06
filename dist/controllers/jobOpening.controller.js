@@ -3,11 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteJobOpening = exports.updateJobOpening = exports.getJobOpeningById = exports.getAllJobOpenings = exports.createJobOpening = void 0;
+exports.getRankedCandidates = exports.deleteJobOpening = exports.updateJobOpening = exports.getJobOpeningById = exports.getAllJobOpenings = exports.createJobOpening = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const jobOpening_model_1 = require("../models/jobOpening.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
+const candidate_model_1 = require("../models/candidate.model");
+const jobOpenings_service_1 = require("../services/jobOpenings.service");
 // Create job
 const createJobOpening = async (req, res, next) => {
     try {
@@ -100,4 +102,34 @@ const deleteJobOpening = async (req, res, next) => {
     }
 };
 exports.deleteJobOpening = deleteJobOpening;
+// Get job suggestions
+const getRankedCandidates = async (req, res, next) => {
+    try {
+        const jobId = req.params.id;
+        if (!mongoose_1.default.Types.ObjectId.isValid(jobId)) {
+            return (0, response_utils_1.failedResponse)(res, "Invalid job ID");
+        }
+        const job = (await jobOpening_model_1.JobOpening.findById(jobId)
+            .populate("skills")
+            .lean());
+        if (!job) {
+            return (0, response_utils_1.failedResponse)(res, "Job not found");
+        }
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const candidates = (await candidate_model_1.Candidate.find({
+            organization: job.organization,
+            status: "active",
+            createdAt: { $gte: sixMonthsAgo },
+        })
+            .populate("skills")
+            .lean());
+        const ranked = (0, jobOpenings_service_1.rankCandidatesByJobSkills)(job.skills, candidates);
+        (0, response_utils_1.successResponse)(res, ranked, "Matched candidates ranked successfully");
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getRankedCandidates = getRankedCandidates;
 //# sourceMappingURL=jobOpening.controller.js.map

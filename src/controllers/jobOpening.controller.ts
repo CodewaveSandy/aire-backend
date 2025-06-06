@@ -3,6 +3,9 @@ import { Request, Response, NextFunction } from "express";
 import { JobOpening } from "../models/jobOpening.model";
 import { successResponse, failedResponse } from "../utils/response.utils";
 import { logger } from "../config/logger";
+import { CandidateWithSkills, JobWithSkills } from "../types";
+import { Candidate } from "../models/candidate.model";
+import { rankCandidatesByJobSkills } from "../services/jobOpenings.service";
 
 // Create job
 export const createJobOpening = async (
@@ -127,6 +130,46 @@ export const deleteJobOpening = async (
   } catch (error) {
     logger.error("Error deleting job opening:", error);
     next(error);
+  }
+};
+
+// Get job suggestions
+export const getRankedCandidates = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const jobId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(jobId)) {
+      return failedResponse(res, "Invalid job ID");
+    }
+
+    const job = (await JobOpening.findById(jobId)
+      .populate("skills")
+      .lean()) as JobWithSkills | null;
+
+    if (!job) {
+      return failedResponse(res, "Job not found");
+    }
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const candidates = (await Candidate.find({
+      organization: job.organization,
+      status: "active",
+      createdAt: { $gte: sixMonthsAgo },
+    })
+      .populate("skills")
+      .lean()) as CandidateWithSkills[];
+
+    const ranked = rankCandidatesByJobSkills(job.skills, candidates);
+
+    successResponse(res, ranked, "Matched candidates ranked successfully");
+  } catch (err) {
+    next(err);
   }
 };
 

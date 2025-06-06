@@ -5,6 +5,7 @@ import {
   getJobOpeningById,
   updateJobOpening,
   deleteJobOpening,
+  getRankedCandidates,
 } from "../controllers/jobOpening.controller";
 import { authMiddleware, authorize } from "../middleware/auth.middleware";
 import { filterMiddleware } from "../middleware/filter.middleware";
@@ -45,6 +46,7 @@ router.get(
 router.get("/:id", getJobOpeningById);
 router.put("/:id", authorize("hr"), updateJobOpening);
 router.delete("/:id", authorize("hr"), deleteJobOpening);
+router.get("/:id/suggestions", authorize("hr"), getRankedCandidates);
 
 export default router;
 
