@@ -11,6 +11,7 @@ import { logger } from "../config/logger";
 import { filterMiddleware } from "../middleware/filter.middleware";
 import { Skill } from "../models/skill.model";
 import { paginationMiddleware } from "../middleware/pagination.middleware";
+import { OrgSkill } from "../models/orgSkill.model";
 
 const router = Router();
 
@@ -26,11 +27,11 @@ router.post("/", authorize("hr"), createSkill);
 router.get(
   "/",
   filterMiddleware({
-    model: Skill,
-    searchableFields: ["name", "slug"],
+    model: OrgSkill,
+    searchableFields: ["skill.name", "skill.slug"], // NOTE: skill.name because we'll populate
     multiValueFields: [],
-    defaultSort: "name",
-    allowedFields: ["name", "slug", "createdAt"],
+    defaultSort: "createdAt", // use OrgSkill's createdAt
+    allowedFields: [], // optional projection
     minSearchLength: 2,
   }),
   paginationMiddleware,

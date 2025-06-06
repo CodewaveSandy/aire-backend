@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Request, Response, NextFunction } from "express";
 import { JobOpening } from "../models/jobOpening.model";
 import { successResponse, failedResponse } from "../utils/response.utils";
@@ -10,7 +11,10 @@ export const createJobOpening = async (
   next: NextFunction
 ) => {
   try {
-    const job = new JobOpening(req.body);
+    const job = new JobOpening({
+      ...req.body,
+      organization: new mongoose.Types.ObjectId(req.user?.organization || ""),
+    });
     await job.save();
     successResponse(res, job, "Job opening created");
   } catch (error) {

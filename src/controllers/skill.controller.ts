@@ -3,6 +3,8 @@ import { Skill } from "../models/skill.model";
 import { logger } from "../config/logger";
 import { failedResponse, successResponse } from "../utils/response.utils";
 import { findOrCreateSkill } from "../services/skill.service";
+import { OrgSkill } from "../models/orgSkill.model";
+import { slugify } from "../utils/common.utils";
 
 export const createSkill = async (
   req: Request,
@@ -20,7 +22,21 @@ export const createSkill = async (
     }
 
     const skill = await findOrCreateSkill(name, aliases);
-    successResponse(res, skill, "Skill created or already exists");
+    const orgSkill = await OrgSkill.findOneAndUpdate(
+      { organization: req.user?.organization, skill: skill._id },
+      { isActive: true },
+      { new: true, upsert: true }
+    ).lean();
+
+    const flattened = {
+      ...orgSkill,
+      skillId: skill._id,
+      name: skill.name,
+      slug: skill.slug,
+      aliases: skill.aliases,
+    };
+
+    successResponse(res, flattened, "Skill created or already exists");
   } catch (error) {
     logger.error("Error creating skill:", error);
     next(error);
@@ -34,24 +50,70 @@ export const getAllSkills = async (
 ) => {
   try {
     const hasPagination = !!res.locals.filteredData?.pagination;
+    const orgId = req.user?.organization;
+
+    if (!orgId) {
+      return failedResponse(res, "Organization context not found.");
+    }
+
+    const baseFilter = {
+      ...res.locals.filterQuery,
+      organization: orgId,
+      isActive: true,
+    };
 
     if (hasPagination) {
-      const { results, pagination } = res.locals.filteredData;
+      const { sortQuery, fieldProjection } = res.locals;
+      const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+      const limit = Math.max(parseInt(req.query.limit as string) || 10, 1);
+      const skip = (page - 1) * limit;
+
+      const [rawResults, totalCount] = await Promise.all([
+        OrgSkill.find(baseFilter)
+          .sort(sortQuery || {})
+          .skip(skip)
+          .limit(limit)
+          .populate("skill")
+          .select(fieldProjection || "")
+          .lean(),
+        OrgSkill.countDocuments(baseFilter),
+      ]);
+
+      const results = rawResults.map(({ skill, ...orgSkill }) => ({
+        ...orgSkill,
+        skillId: skill?._id, // optional: rename skill _id
+        ...skill,
+      }));
+
       successResponse(
         res,
-        { results, pagination },
+        {
+          results,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalCount / limit),
+            totalCount,
+          },
+        },
         "Skills retrieved with pagination"
       );
     } else {
-      const model = res.locals.model;
-      const data = await model
-        .find(res.locals.filterQuery || {})
+      const rawData = await OrgSkill.find(baseFilter)
         .sort(res.locals.sortQuery || {})
-        .select(res.locals.fieldProjection || "");
+        .populate("skill")
+        .select(res.locals.fieldProjection || "")
+        .lean();
+
+      const data = rawData.map(({ skill, ...orgSkill }) => ({
+        ...orgSkill,
+        skillId: skill?._id,
+        ...skill,
+      }));
+
       successResponse(res, data, "Skills retrieved");
     }
   } catch (error) {
-    logger.error("Error fetching skills:", error);
+    logger.error("Error fetching org-specific skills:", error);
     next(error);
   }
 };

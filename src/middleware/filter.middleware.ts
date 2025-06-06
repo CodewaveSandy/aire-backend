@@ -8,6 +8,7 @@ export interface FilterOptions {
   defaultSort?: string; // Default sort string (e.g., "name")
   allowedFields?: string[]; // For field selection
   minSearchLength?: number; // Minimum characters to allow search
+  restrictByOrg?: boolean; // ✅ New flag
 }
 
 export const filterMiddleware = ({
@@ -17,6 +18,7 @@ export const filterMiddleware = ({
   defaultSort = "createdAt",
   allowedFields = [],
   minSearchLength = 2,
+  restrictByOrg = true, // ✅ Default to true
 }: FilterOptions) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -24,7 +26,12 @@ export const filterMiddleware = ({
 
       const filterQuery: Record<string, any> = {};
 
-      // Partial match using regex anywhere in the string (case-insensitive)
+      // ✅ Restrict to user organization if enabled
+      if (restrictByOrg && req.user?.organization) {
+        filterQuery.organization = req.user.organization;
+      }
+
+      // Partial match using regex
       for (const field of searchableFields) {
         if (query[field]) {
           const value = (query[field] as string).trim();
@@ -34,7 +41,7 @@ export const filterMiddleware = ({
         }
       }
 
-      // Multi-value filter (e.g., skills=React,Node)
+      // Multi-value filters
       for (const field of multiValueFields) {
         if (query[field]) {
           const values = (query[field] as string)
@@ -59,7 +66,7 @@ export const filterMiddleware = ({
         sortQuery = { [defaultSort]: -1 };
       }
 
-      // Field selection
+      // Field projection
       let fieldProjection: string | undefined = undefined;
       if (fields) {
         const requestedFields = (fields as string).split(",");
@@ -69,15 +76,14 @@ export const filterMiddleware = ({
         fieldProjection = safeFields.join(" ");
       }
 
-      // Set in res.locals
       res.locals.filterQuery = filterQuery;
       res.locals.sortQuery = sortQuery;
       res.locals.fieldProjection = fieldProjection;
       res.locals.model = model;
 
-      return next();
+      next();
     } catch (err) {
-      return next(err);
+      next(err);
     }
   };
 };

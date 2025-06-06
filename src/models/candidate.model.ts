@@ -12,6 +12,7 @@ export interface ICandidate extends Document {
   status: "active" | "hired" | "blacklisted";
   socialLinks?: string[];
   resumeUrl?: string;
+  organization: Types.ObjectId;
 }
 
 const candidateSchema = new Schema<ICandidate>(
@@ -25,6 +26,11 @@ const candidateSchema = new Schema<ICandidate>(
     education: { type: String },
     about: { type: String },
     resumeUrl: { type: String },
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+    },
     status: {
       type: String,
       enum: ["active", "hired", "blacklisted"],

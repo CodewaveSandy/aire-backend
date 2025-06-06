@@ -15,6 +15,7 @@ import path from "path";
 import { openai } from "../config/openai";
 import { resolveSkillsFromText } from "../services/skill.service";
 import { uploadToR2 } from "../utils/r2.utils";
+import mongoose from "mongoose";
 
 // Create
 export const createCandidate = async (
@@ -36,6 +37,7 @@ export const createCandidate = async (
 
     const candidate = new Candidate({
       ...req.body,
+      organization: new mongoose.Types.ObjectId(req.user?.organization || ""),
       resumeUrl,
     });
 

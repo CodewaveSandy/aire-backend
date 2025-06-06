@@ -9,6 +9,7 @@ export interface IJobOpening extends Document {
   minExpYear: number;
   maxExpYear: number;
   status: "active" | "hold" | "complete";
+  organization: Types.ObjectId;
 }
 
 const jobOpeningSchema = new Schema<IJobOpening>(
@@ -17,6 +18,11 @@ const jobOpeningSchema = new Schema<IJobOpening>(
     description: { type: String, required: true },
     skills: [{ type: Schema.Types.ObjectId, ref: "Skill", required: true }],
     minBudget: { type: Number, required: true, min: 0 },
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+    },
     maxBudget: {
       type: Number,
       required: true,
