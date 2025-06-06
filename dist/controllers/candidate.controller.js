@@ -15,6 +15,8 @@ const path_1 = __importDefault(require("path"));
 const openai_1 = require("../config/openai");
 const skill_service_1 = require("../services/skill.service");
 const r2_utils_1 = require("../utils/r2.utils");
+const mongoose_1 = __importDefault(require("mongoose"));
+const orgSkill_model_1 = require("../models/orgSkill.model");
 // Create
 const createCandidate = async (req, res, next) => {
     try {
@@ -30,6 +32,7 @@ const createCandidate = async (req, res, next) => {
         }
         const candidate = new candidate_model_1.Candidate({
             ...req.body,
+            organization: new mongoose_1.default.Types.ObjectId(req.user?.organization || ""),
             resumeUrl,
         });
         await candidate.save();
@@ -181,6 +184,7 @@ ${relevantResumeText}
         // Step 6: Resolve skills to DB
         logger_1.logger.info(`Resolving ${parsedJson.skills.length} skills against database...`);
         const resolvedSkills = await (0, skill_service_1.resolveSkillsFromText)(parsedJson.skills || []);
+        await Promise.all(resolvedSkills.map((skill) => orgSkill_model_1.OrgSkill.findOneAndUpdate({ organization: req.user?.organization, skill: skill._id }, { isActive: true }, { upsert: true, new: true })));
         const result = {
             name,
             email,

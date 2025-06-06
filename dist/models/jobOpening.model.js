@@ -7,6 +7,11 @@ const jobOpeningSchema = new mongoose_1.Schema({
     description: { type: String, required: true },
     skills: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "Skill", required: true }],
     minBudget: { type: Number, required: true, min: 0 },
+    organization: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Organization",
+        required: true,
+    },
     maxBudget: {
         type: Number,
         required: true,

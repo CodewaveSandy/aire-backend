@@ -1,13 +1,20 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteJobOpening = exports.updateJobOpening = exports.getJobOpeningById = exports.getAllJobOpenings = exports.createJobOpening = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const jobOpening_model_1 = require("../models/jobOpening.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
 // Create job
 const createJobOpening = async (req, res, next) => {
     try {
-        const job = new jobOpening_model_1.JobOpening(req.body);
+        const job = new jobOpening_model_1.JobOpening({
+            ...req.body,
+            organization: new mongoose_1.default.Types.ObjectId(req.user?.organization || ""),
+        });
         await job.save();
         (0, response_utils_1.successResponse)(res, job, "Job opening created");
     }

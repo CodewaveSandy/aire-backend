@@ -30,6 +30,11 @@ const userSchema = new mongoose_1.Schema({
         enum: ["hr", "interviewer"],
         required: true,
     },
+    organization: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Organization",
+        required: true,
+    },
 }, {
     timestamps: true,
     toJSON: {

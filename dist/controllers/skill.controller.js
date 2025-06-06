@@ -5,6 +5,7 @@ const skill_model_1 = require("../models/skill.model");
 const logger_1 = require("../config/logger");
 const response_utils_1 = require("../utils/response.utils");
 const skill_service_1 = require("../services/skill.service");
+const orgSkill_model_1 = require("../models/orgSkill.model");
 const createSkill = async (req, res, next) => {
     try {
         const { name, aliases } = req.body;
@@ -12,7 +13,15 @@ const createSkill = async (req, res, next) => {
             return (0, response_utils_1.failedResponse)(res, "Skill name is required and must be a string.");
         }
         const skill = await (0, skill_service_1.findOrCreateSkill)(name, aliases);
-        (0, response_utils_1.successResponse)(res, skill, "Skill created or already exists");
+        const orgSkill = await orgSkill_model_1.OrgSkill.findOneAndUpdate({ organization: req.user?.organization, skill: skill._id }, { isActive: true }, { new: true, upsert: true }).lean();
+        const flattened = {
+            ...orgSkill,
+            _id: skill._id,
+            name: skill.name,
+            slug: skill.slug,
+            aliases: skill.aliases,
+        };
+        (0, response_utils_1.successResponse)(res, flattened, "Skill created or already exists");
     }
     catch (error) {
         logger_1.logger.error("Error creating skill:", error);
@@ -23,21 +32,60 @@ exports.createSkill = createSkill;
 const getAllSkills = async (req, res, next) => {
     try {
         const hasPagination = !!res.locals.filteredData?.pagination;
+        const orgId = req.user?.organization;
+        if (!orgId) {
+            return (0, response_utils_1.failedResponse)(res, "Organization context not found.");
+        }
+        const baseFilter = {
+            ...res.locals.filterQuery,
+            organization: orgId,
+            isActive: true,
+        };
         if (hasPagination) {
-            const { results, pagination } = res.locals.filteredData;
-            (0, response_utils_1.successResponse)(res, { results, pagination }, "Skills retrieved with pagination");
+            const { sortQuery, fieldProjection } = res.locals;
+            const page = Math.max(parseInt(req.query.page) || 1, 1);
+            const limit = Math.max(parseInt(req.query.limit) || 10, 1);
+            const skip = (page - 1) * limit;
+            const [rawResults, totalCount] = await Promise.all([
+                orgSkill_model_1.OrgSkill.find(baseFilter)
+                    .sort(sortQuery || {})
+                    .skip(skip)
+                    .limit(limit)
+                    .populate("skill")
+                    .select(fieldProjection || "")
+                    .lean(),
+                orgSkill_model_1.OrgSkill.countDocuments(baseFilter),
+            ]);
+            const results = rawResults.map(({ skill, ...orgSkill }) => ({
+                ...orgSkill,
+                skillId: skill?._id,
+                ...skill,
+            }));
+            (0, response_utils_1.successResponse)(res, {
+                results,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalCount / limit),
+                    totalCount,
+                },
+            }, "Skills retrieved with pagination");
         }
         else {
-            const model = res.locals.model;
-            const data = await model
-                .find(res.locals.filterQuery || {})
+            const rawData = await orgSkill_model_1.OrgSkill.find(baseFilter)
                 .sort(res.locals.sortQuery || {})
-                .select(res.locals.fieldProjection || "");
+                .populate("skill")
+                .select(res.locals.fieldProjection || "")
+                .lean();
+            const data = rawData.map(({ skill, ...orgSkill }) => ({
+                ...orgSkill,
+                skillId: skill?._id,
+                ...skill,
+            }));
             (0, response_utils_1.successResponse)(res, data, "Skills retrieved");
         }
     }
     catch (error) {
-        logger_1.logger.error("Error fetching skills:", error);
+        logger_1.logger.error("Error fetching org-specific skills:", error);
         next(error);
     }
 };

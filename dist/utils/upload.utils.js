@@ -3,12 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resumeUpload = void 0;
+exports.orgLogoUpload = exports.resumeUpload = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 // Create local directory if not exists
 const uploadDir = path_1.default.join(__dirname, "../../uploads/resumes");
+const uploadOrgLogo = path_1.default.join(__dirname, "../../uploads/organization");
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
@@ -22,7 +23,7 @@ const storage = multer_1.default.diskStorage({
     },
 });
 exports.resumeUpload = (0, multer_1.default)({
-    dest: uploadDir,
+    storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
     fileFilter: (_req, file, cb) => {
         const allowed = [
@@ -34,6 +35,17 @@ exports.resumeUpload = (0, multer_1.default)({
             cb(null, true);
         else
             cb(new Error("Only PDF/DOC/DOCX files are allowed"));
+    },
+});
+exports.orgLogoUpload = (0, multer_1.default)({
+    dest: uploadOrgLogo,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: (_req, file, cb) => {
+        const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+        if (allowed.includes(file.mimetype))
+            cb(null, true);
+        else
+            cb(new Error("Only image files (PNG, JPG, JPEG, WEBP) are allowed"));
     },
 });
 //# sourceMappingURL=upload.utils.js.map

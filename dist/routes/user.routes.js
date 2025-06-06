@@ -5,6 +5,8 @@ const user_controller_1 = require("../controllers/user.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const logger_1 = require("../config/logger");
 const response_utils_1 = require("../utils/response.utils");
+const validate_middleware_1 = require("../middleware/validate.middleware");
+const user_schema_1 = require("../validators/user.schema");
 const router = (0, express_1.Router)();
 // Log all requests to user routes
 router.use((req, _res, next) => {
@@ -12,7 +14,7 @@ router.use((req, _res, next) => {
     next();
 });
 // Register a new user
-router.post("/register", user_controller_1.registerUser);
+router.post("/register", (0, validate_middleware_1.validate)(user_schema_1.registerUserSchema), user_controller_1.registerUser);
 // Login user
 router.post("/login", user_controller_1.loginUser);
 // Get current user (protected route)

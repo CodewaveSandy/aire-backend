@@ -6,6 +6,8 @@ const logger_1 = require("../config/logger");
 const jwt_utils_1 = require("../utils/jwt.utils");
 const user_model_1 = require("../models/user.model");
 const response_utils_1 = require("../utils/response.utils");
+const organization_model_1 = require("../models/organization.model");
+const common_utils_1 = require("../utils/common.utils");
 // Register a new user
 const registerUser = async (req, res, next) => {
     try {
@@ -14,7 +16,7 @@ const registerUser = async (req, res, next) => {
             ...req.body,
             password: "***HIDDEN***",
         });
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, organization, isNewOrg } = req.body;
         // Check if user already exists
         const existingUser = await user_model_1.User.findOne({ email });
         if (existingUser) {
@@ -22,18 +24,43 @@ const registerUser = async (req, res, next) => {
             (0, response_utils_1.failedResponse)(res, "Email already in use");
             return;
         }
-        // Create new user
+        let orgId;
+        // Handle organization logic
+        if (isNewOrg) {
+            const existingOrg = await organization_model_1.OrganizationModel.findOne({
+                name: new RegExp(`^${organization}$`, "i"), // case-insensitive check
+                isDelete: false,
+            });
+            if (existingOrg) {
+                logger_1.logger.info(`Organization already exists, using existing orgId: ${existingOrg._id}`);
+                orgId = existingOrg._id;
+            }
+            else {
+                const slug = (0, common_utils_1.slugify)(organization);
+                const newOrg = await organization_model_1.OrganizationModel.create({
+                    name: organization,
+                    slug,
+                    logoUrl: "https://codewave-wp.gumlet.io/wp-content/uploads/2024/03/codew-logo.png",
+                    isActive: true,
+                    isDelete: false,
+                });
+                orgId = newOrg._id;
+                logger_1.logger.info(`New organization created: ${orgId}`);
+            }
+        }
+        else {
+            orgId = organization; // expecting this to be ObjectId string
+        }
+        // Create and save user
         const user = new user_model_1.User({
             name,
             email,
             password,
             role,
+            organization: orgId,
         });
-        // Save user to database
         await user.save();
-        const userId = user._id ? user._id.toString() : "unknown";
-        logger_1.logger.info(`User registered successfully: ${userId}`);
-        // Return success response with user data
+        logger_1.logger.info(`User registered successfully: ${user._id}`);
         (0, response_utils_1.successResponse)(res, user, "User registered successfully");
     }
     catch (error) {

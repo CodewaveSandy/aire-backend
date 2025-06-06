@@ -12,6 +12,11 @@ const candidateSchema = new mongoose_1.Schema({
     education: { type: String },
     about: { type: String },
     resumeUrl: { type: String },
+    organization: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Organization",
+        required: true,
+    },
     status: {
         type: String,
         enum: ["active", "hired", "blacklisted"],

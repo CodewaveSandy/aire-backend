@@ -8,6 +8,7 @@ exports.uploadToR2 = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const common_utils_1 = require("./common.utils");
 const r2 = new client_s3_1.S3Client({
     region: "auto",
     endpoint: process.env.R2_ENDPOINT,
@@ -16,14 +17,10 @@ const r2 = new client_s3_1.S3Client({
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
 });
-const slugify = (str) => str
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
 const uploadToR2 = async (file, fullName) => {
     const fileStream = fs_1.default.createReadStream(file.path);
     const extension = path_1.default.extname(file.originalname);
-    const safeName = slugify(fullName);
+    const safeName = (0, common_utils_1.slugify)(fullName);
     const timestamp = Date.now();
     const key = `${safeName}-${timestamp}${extension}`;
     await r2.send(new client_s3_1.PutObjectCommand({

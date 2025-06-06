@@ -5,8 +5,8 @@ const skill_controller_1 = require("../controllers/skill.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const logger_1 = require("../config/logger");
 const filter_middleware_1 = require("../middleware/filter.middleware");
-const skill_model_1 = require("../models/skill.model");
 const pagination_middleware_1 = require("../middleware/pagination.middleware");
+const orgSkill_model_1 = require("../models/orgSkill.model");
 const router = (0, express_1.Router)();
 // Middleware to log skill route accesses
 router.use((req, _res, next) => {
@@ -17,11 +17,11 @@ router.use((req, _res, next) => {
 router.use(auth_middleware_1.authMiddleware);
 router.post("/", (0, auth_middleware_1.authorize)("hr"), skill_controller_1.createSkill);
 router.get("/", (0, filter_middleware_1.filterMiddleware)({
-    model: skill_model_1.Skill,
-    searchableFields: ["name", "slug"],
+    model: orgSkill_model_1.OrgSkill,
+    searchableFields: ["skill.name", "skill.slug"], // NOTE: skill.name because we'll populate
     multiValueFields: [],
-    defaultSort: "name",
-    allowedFields: ["name", "slug", "createdAt"],
+    defaultSort: "createdAt", // use OrgSkill's createdAt
+    allowedFields: [], // optional projection
     minSearchLength: 2,
 }), pagination_middleware_1.paginationMiddleware, skill_controller_1.getAllSkills);
 router.get("/:id", skill_controller_1.getSkillById);
