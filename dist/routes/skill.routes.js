@@ -18,11 +18,21 @@ router.use(auth_middleware_1.authMiddleware);
 router.post("/", (0, auth_middleware_1.authorize)("hr"), skill_controller_1.createSkill);
 router.get("/", (0, filter_middleware_1.filterMiddleware)({
     model: orgSkill_model_1.OrgSkill,
-    searchableFields: ["skill.name", "skill.slug"], // NOTE: skill.name because we'll populate
-    multiValueFields: [],
-    defaultSort: "createdAt", // use OrgSkill's createdAt
-    allowedFields: [], // optional projection
-    minSearchLength: 2,
+    searchableFields: ["name", "slug"],
+    populateLookups: [
+        {
+            from: "skills", // MongoDB collection name
+            localField: "skill",
+            foreignField: "_id",
+            as: "skill",
+            unwind: true,
+        },
+    ],
+    fieldAliases: {
+        name: "skill.name",
+        slug: "skill.slug",
+    },
+    defaultSort: "createdAt",
 }), pagination_middleware_1.paginationMiddleware, skill_controller_1.getAllSkills);
 router.get("/:id", skill_controller_1.getSkillById);
 router.put("/:id", (0, auth_middleware_1.authorize)("hr"), skill_controller_1.updateSkill);

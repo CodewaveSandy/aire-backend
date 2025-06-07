@@ -3,6 +3,7 @@ import { IUser } from "../models/user.model";
 import { IJobOpening } from "../models/jobOpening.model";
 import { ISkill } from "../models/skill.model";
 import { ICandidate } from "../models/candidate.model";
+import { IOrgSkill } from "../models/orgSkill.model";
 
 // Extended Request interface with user
 export interface AuthRequest extends Request {
@@ -39,5 +40,9 @@ export type CandidateWithSkills = Omit<ICandidate, "skills"> & {
 export type RankedCandidate = CandidateWithSkills & {
   matchPercentage: number;
   matchedSkills: string[];
+};
+
+export type PopulatedOrgSkill = Omit<IOrgSkill, "skill"> & {
+  skill: ISkill | null;
 };
 

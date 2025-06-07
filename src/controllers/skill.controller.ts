@@ -5,6 +5,8 @@ import { failedResponse, successResponse } from "../utils/response.utils";
 import { findOrCreateSkill } from "../services/skill.service";
 import { OrgSkill } from "../models/orgSkill.model";
 import { slugify } from "../utils/common.utils";
+import { Types } from "mongoose";
+import { PopulatedOrgSkill } from "../types";
 
 export const createSkill = async (
   req: Request,
@@ -49,43 +51,49 @@ export const getAllSkills = async (
   next: NextFunction
 ) => {
   try {
-    const hasPagination = !!res.locals.filteredData?.pagination;
     const orgId = req.user?.organization;
-
     if (!orgId) {
       return failedResponse(res, "Organization context not found.");
     }
 
-    const baseFilter = {
-      ...res.locals.filterQuery,
-      organization: orgId,
-      isActive: true,
-    };
+    const hasPagination = !!res.locals.filteredData?.pagination;
+    const queryType = res.locals.queryType;
+    const model = res.locals.model;
 
-    if (hasPagination) {
-      const { sortQuery, fieldProjection } = res.locals;
-      const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-      const limit = Math.max(parseInt(req.query.limit as string) || 10, 1);
-      const skip = (page - 1) * limit;
+    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit as string) || 10, 1);
+    const skip = (page - 1) * limit;
 
-      const [rawResults, totalCount] = await Promise.all([
-        OrgSkill.find(baseFilter)
-          .sort(sortQuery || {})
-          .skip(skip)
-          .limit(limit)
-          .populate("skill")
-          .select(fieldProjection || "")
-          .lean(),
-        OrgSkill.countDocuments(baseFilter),
+    if (queryType === "aggregate") {
+      const pipeline = [
+        ...res.locals.pipeline,
+        { $match: { organization: new Types.ObjectId(orgId), isActive: true } },
+        { $skip: skip },
+        { $limit: limit },
+      ];
+
+      const countPipeline = [
+        ...res.locals.pipeline,
+        { $match: { organization: new Types.ObjectId(orgId), isActive: true } },
+        { $count: "total" },
+      ];
+
+      const [rawResults, countResult] = await Promise.all([
+        model.aggregate(pipeline),
+        model.aggregate(countPipeline),
       ]);
 
-      const results = rawResults.map(({ skill, ...orgSkill }) => ({
-        ...orgSkill,
-        skillId: skill?._id,
-        ...skill,
-      }));
+      const totalCount = countResult[0]?.total || 0;
 
-      successResponse(
+      const results = (rawResults as PopulatedOrgSkill[]).map(
+        ({ skill, ...orgSkill }) => ({
+          ...orgSkill,
+          skillId: skill?._id,
+          ...skill,
+        })
+      );
+
+      return successResponse(
         res,
         {
           results,
@@ -95,22 +103,68 @@ export const getAllSkills = async (
             totalCount,
           },
         },
-        "Skills retrieved with pagination"
+        "Skills retrieved with aggregation and pagination"
       );
     } else {
-      const rawData = await OrgSkill.find(baseFilter)
-        .sort(res.locals.sortQuery || {})
-        .populate("skill")
-        .select(res.locals.fieldProjection || "")
-        .lean();
+      const baseFilter = {
+        ...res.locals.filterQuery,
+        organization: orgId,
+        isActive: true,
+      };
 
-      const data = rawData.map(({ skill, ...orgSkill }) => ({
-        ...orgSkill,
-        skillId: skill?._id,
-        ...skill,
-      }));
+      if (hasPagination) {
+        const { sortQuery, fieldProjection } = res.locals;
 
-      successResponse(res, data, "Skills retrieved");
+        const [rawResults, totalCount] = await Promise.all([
+          model
+            .find(baseFilter)
+            .sort(sortQuery || {})
+            .skip(skip)
+            .limit(limit)
+            .populate("skill")
+            .select(fieldProjection || "")
+            .lean(),
+          model.countDocuments(baseFilter),
+        ]);
+
+        const results = (rawResults as PopulatedOrgSkill[]).map(
+          ({ skill, ...orgSkill }) => ({
+            ...orgSkill,
+            skillId: skill?._id,
+            ...skill,
+          })
+        );
+
+        return successResponse(
+          res,
+          {
+            results,
+            pagination: {
+              currentPage: page,
+              totalPages: Math.ceil(totalCount / limit),
+              totalCount,
+            },
+          },
+          "Skills retrieved with pagination"
+        );
+      } else {
+        const rawData = await model
+          .find(baseFilter)
+          .sort(res.locals.sortQuery || {})
+          .populate("skill")
+          .select(res.locals.fieldProjection || "")
+          .lean();
+
+        const data = (rawData as PopulatedOrgSkill[]).map(
+          ({ skill, ...orgSkill }) => ({
+            ...orgSkill,
+            skillId: skill?._id,
+            ...skill,
+          })
+        );
+
+        return successResponse(res, data, "Skills retrieved");
+      }
     }
   } catch (error) {
     logger.error("Error fetching org-specific skills:", error);

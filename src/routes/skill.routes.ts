@@ -28,11 +28,21 @@ router.get(
   "/",
   filterMiddleware({
     model: OrgSkill,
-    searchableFields: ["skill.name", "skill.slug"], // NOTE: skill.name because we'll populate
-    multiValueFields: [],
-    defaultSort: "createdAt", // use OrgSkill's createdAt
-    allowedFields: [], // optional projection
-    minSearchLength: 2,
+    searchableFields: ["name", "slug"],
+    populateLookups: [
+      {
+        from: "skills", // MongoDB collection name
+        localField: "skill",
+        foreignField: "_id",
+        as: "skill",
+        unwind: true,
+      },
+    ],
+    fieldAliases: {
+      name: "skill.name",
+      slug: "skill.slug",
+    },
+    defaultSort: "createdAt",
   }),
   paginationMiddleware,
   getAllSkills
