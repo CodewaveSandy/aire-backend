@@ -46,3 +46,10 @@ export type PopulatedOrgSkill = Omit<IOrgSkill, "skill"> & {
   skill: ISkill | null;
 };
 
+export interface AnonymizedCandidate {
+  id: string; // C-0
+  skills: string[]; // skill names
+  experience: number;
+  location?: string;
+}
+

@@ -106,17 +106,21 @@ exports.deleteJobOpening = deleteJobOpening;
 const getRankedCandidates = async (req, res, next) => {
     try {
         const jobId = req.params.id;
+        logger_1.logger.info(`Fetching ranked candidates for job ID: ${jobId}`);
         if (!mongoose_1.default.Types.ObjectId.isValid(jobId)) {
+            logger_1.logger.warn(`Invalid job ID format: ${jobId}`);
             return (0, response_utils_1.failedResponse)(res, "Invalid job ID");
         }
         const job = (await jobOpening_model_1.JobOpening.findById(jobId)
             .populate("skills")
             .lean());
+        logger_1.logger.info(`Job found: ${job ? job.title : "Not found"}`);
         if (!job) {
             return (0, response_utils_1.failedResponse)(res, "Job not found");
         }
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        logger_1.logger.info(`Fetching candidates for organization: ${job.organization} created after ${sixMonthsAgo.toISOString()}`);
         const candidates = (await candidate_model_1.Candidate.find({
             organization: job.organization,
             status: "active",
@@ -124,8 +128,32 @@ const getRankedCandidates = async (req, res, next) => {
         })
             .populate("skills")
             .lean());
+        logger_1.logger.info(`Found ${candidates.length} candidates for ranking`);
         const ranked = (0, jobOpenings_service_1.rankCandidatesByJobSkills)(job.skills, candidates);
-        (0, response_utils_1.successResponse)(res, ranked, "Matched candidates ranked successfully");
+        logger_1.logger.info(`Ranked candidates count: ${ranked.length}`);
+        const top20 = ranked.slice(0, 20);
+        logger_1.logger.info(`Top ${top20.length} candidates selected for AI matching`);
+        // Prepare anonymized payload
+        const anonymized = top20.map((c, i) => ({
+            id: `C-${i}`,
+            skills: c.skills.map((s) => s.name),
+            experience: c.experience,
+            location: c.location,
+        }));
+        logger_1.logger.info(`Anonymized candidates prepared for AI matching: ${anonymized.length}`);
+        const matchedIndexes = await (0, jobOpenings_service_1.suggestWithOpenAI)({
+            job,
+            candidates: anonymized,
+        });
+        logger_1.logger.info(`AI-matched candidates indexes: ${matchedIndexes ? matchedIndexes.length : 0}`);
+        if (matchedIndexes && matchedIndexes.length > 0) {
+            const refined = matchedIndexes.map((i) => top20[i]).filter(Boolean);
+            logger_1.logger.info(`Refined candidates after AI matching: ${refined.length}`);
+            return (0, response_utils_1.successResponse)(res, refined, "Top 10 AI-matched candidates");
+        }
+        logger_1.logger.warn("No AI matches found, falling back to top 20 candidates");
+        // fallback
+        return (0, response_utils_1.successResponse)(res, top20, "Fallback to top 20 locally ranked candidates");
     }
     catch (err) {
         next(err);
