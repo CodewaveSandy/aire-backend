@@ -13,6 +13,7 @@ import jobOpeningRoutes from "./routes/jobOpening.routes";
 import candidateRoutes from "./routes/candidate.routes";
 import organizationRoutes from "./routes/organization.routes";
 import orgSkillRoutes from "./routes/orgSkill.routes";
+import interviewRoundRoutes from "./routes/interviewRounds.routes";
 
 const app: Application = express();
 
@@ -41,6 +42,7 @@ app.use("/api/jobs", jobOpeningRoutes);
 app.use("/api/candidates", candidateRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/org-skills", orgSkillRoutes);
+app.use("/api/interviews", interviewRoundRoutes);
 
 export default app;
 

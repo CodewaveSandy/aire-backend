@@ -6,12 +6,14 @@ import {
   updateJobOpening,
   deleteJobOpening,
   getRankedCandidates,
+  getJobProgressReport,
 } from "../controllers/jobOpening.controller";
 import { authMiddleware, authorize } from "../middleware/auth.middleware";
 import { filterMiddleware } from "../middleware/filter.middleware";
 import { paginationMiddleware } from "../middleware/pagination.middleware";
 import { JobOpening } from "../models/jobOpening.model";
 import { logger } from "../config/logger";
+import { createShortlistBucket } from "../controllers/candidateBucket.controller";
 
 const router = Router();
 
@@ -47,6 +49,8 @@ router.get("/:id", getJobOpeningById);
 router.put("/:id", authorize("hr"), updateJobOpening);
 router.delete("/:id", authorize("hr"), deleteJobOpening);
 router.get("/:id/suggestions", authorize("hr"), getRankedCandidates);
+router.get("/:id/progress", authorize("hr"), getJobProgressReport);
+router.post("/:id/shortlist", authorize("hr"), createShortlistBucket);
 
 export default router;
 

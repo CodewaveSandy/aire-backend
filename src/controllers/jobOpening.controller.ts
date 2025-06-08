@@ -9,6 +9,8 @@ import {
   rankCandidatesByJobSkills,
   suggestWithOpenAI,
 } from "../services/jobOpenings.service";
+import { CandidateBucket } from "../models/candidateBucket.model";
+import { InterviewRound } from "../models/interviewRound.model";
 
 // Create job
 export const createJobOpening = async (
@@ -220,6 +222,36 @@ export const getRankedCandidates = async (
       res,
       top20,
       "Fallback to top 20 locally ranked candidates"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getJobProgressReport = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const jobId = req.params.id;
+
+    const bucket = await CandidateBucket.findOne({ job: jobId })
+      .populate("candidates.candidate", "fullName email experience skills")
+      .lean();
+
+    const interviews = await InterviewRound.find({ job: jobId })
+      .populate("candidate", "fullName")
+      .populate("interviewer", "fullName")
+      .lean();
+
+    return successResponse(
+      res,
+      {
+        bucket,
+        interviews,
+      },
+      "Job progress report"
     );
   } catch (err) {
     next(err);

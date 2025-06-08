@@ -3,13 +3,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRankedCandidates = exports.deleteJobOpening = exports.updateJobOpening = exports.getJobOpeningById = exports.getAllJobOpenings = exports.createJobOpening = void 0;
+exports.getJobProgressReport = exports.getRankedCandidates = exports.deleteJobOpening = exports.updateJobOpening = exports.getJobOpeningById = exports.getAllJobOpenings = exports.createJobOpening = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const jobOpening_model_1 = require("../models/jobOpening.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
 const candidate_model_1 = require("../models/candidate.model");
 const jobOpenings_service_1 = require("../services/jobOpenings.service");
+const candidateBucket_model_1 = require("../models/candidateBucket.model");
+const interviewRound_model_1 = require("../models/interviewRound.model");
 // Create job
 const createJobOpening = async (req, res, next) => {
     try {
@@ -160,4 +162,24 @@ const getRankedCandidates = async (req, res, next) => {
     }
 };
 exports.getRankedCandidates = getRankedCandidates;
+const getJobProgressReport = async (req, res, next) => {
+    try {
+        const jobId = req.params.id;
+        const bucket = await candidateBucket_model_1.CandidateBucket.findOne({ job: jobId })
+            .populate("candidates.candidate", "fullName email experience skills")
+            .lean();
+        const interviews = await interviewRound_model_1.InterviewRound.find({ job: jobId })
+            .populate("candidate", "fullName")
+            .populate("interviewer", "fullName")
+            .lean();
+        return (0, response_utils_1.successResponse)(res, {
+            bucket,
+            interviews,
+        }, "Job progress report");
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getJobProgressReport = getJobProgressReport;
 //# sourceMappingURL=jobOpening.controller.js.map

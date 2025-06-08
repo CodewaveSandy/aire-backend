@@ -17,6 +17,7 @@ const jobOpening_routes_1 = __importDefault(require("./routes/jobOpening.routes"
 const candidate_routes_1 = __importDefault(require("./routes/candidate.routes"));
 const organization_routes_1 = __importDefault(require("./routes/organization.routes"));
 const orgSkill_routes_1 = __importDefault(require("./routes/orgSkill.routes"));
+const interviewRounds_routes_1 = __importDefault(require("./routes/interviewRounds.routes"));
 const app = (0, express_1.default)();
 // Middleware
 app.use((0, helmet_1.default)());
@@ -39,5 +40,6 @@ app.use("/api/jobs", jobOpening_routes_1.default);
 app.use("/api/candidates", candidate_routes_1.default);
 app.use("/api/organizations", organization_routes_1.default);
 app.use("/api/org-skills", orgSkill_routes_1.default);
+app.use("/api/interviews", interviewRounds_routes_1.default);
 exports.default = app;
 //# sourceMappingURL=app.js.map

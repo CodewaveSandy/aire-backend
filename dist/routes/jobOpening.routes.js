@@ -7,6 +7,7 @@ const filter_middleware_1 = require("../middleware/filter.middleware");
 const pagination_middleware_1 = require("../middleware/pagination.middleware");
 const jobOpening_model_1 = require("../models/jobOpening.model");
 const logger_1 = require("../config/logger");
+const candidateBucket_controller_1 = require("../controllers/candidateBucket.controller");
 const router = (0, express_1.Router)();
 router.use(auth_middleware_1.authMiddleware);
 router.use((req, _res, next) => {
@@ -32,5 +33,7 @@ router.get("/:id", jobOpening_controller_1.getJobOpeningById);
 router.put("/:id", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.updateJobOpening);
 router.delete("/:id", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.deleteJobOpening);
 router.get("/:id/suggestions", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.getRankedCandidates);
+router.get("/:id/progress", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.getJobProgressReport);
+router.post("/:id/shortlist", (0, auth_middleware_1.authorize)("hr"), candidateBucket_controller_1.createShortlistBucket);
 exports.default = router;
 //# sourceMappingURL=jobOpening.routes.js.map
