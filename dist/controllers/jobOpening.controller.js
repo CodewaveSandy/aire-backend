@@ -1,17 +1,46 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getJobProgressReport = exports.getRankedCandidates = exports.deleteJobOpening = exports.updateJobOpening = exports.getJobOpeningById = exports.getAllJobOpenings = exports.createJobOpening = void 0;
-const mongoose_1 = __importDefault(require("mongoose"));
+const mongoose_1 = __importStar(require("mongoose"));
 const jobOpening_model_1 = require("../models/jobOpening.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
 const candidate_model_1 = require("../models/candidate.model");
 const jobOpenings_service_1 = require("../services/jobOpenings.service");
 const candidateBucket_model_1 = require("../models/candidateBucket.model");
-const interviewRound_model_1 = require("../models/interviewRound.model");
 // Create job
 const createJobOpening = async (req, res, next) => {
     try {
@@ -164,18 +193,80 @@ const getRankedCandidates = async (req, res, next) => {
 exports.getRankedCandidates = getRankedCandidates;
 const getJobProgressReport = async (req, res, next) => {
     try {
-        const jobId = req.params.id;
-        const bucket = await candidateBucket_model_1.CandidateBucket.findOne({ job: jobId })
-            .populate("candidates.candidate", "fullName email experience skills")
-            .lean();
-        const interviews = await interviewRound_model_1.InterviewRound.find({ job: jobId })
-            .populate("candidate", "fullName")
-            .populate("interviewer", "fullName")
-            .lean();
-        return (0, response_utils_1.successResponse)(res, {
-            bucket,
-            interviews,
-        }, "Job progress report");
+        const jobId = new mongoose_1.Types.ObjectId(req.params.id);
+        // Aggregate bucket info with candidate and interview details
+        const bucketData = await candidateBucket_model_1.CandidateBucket.aggregate([
+            { $match: { job: jobId } },
+            { $unwind: "$candidates" },
+            {
+                $lookup: {
+                    from: "candidates",
+                    localField: "candidates.candidate",
+                    foreignField: "_id",
+                    as: "candidateDetails",
+                },
+            },
+            { $unwind: "$candidateDetails" },
+            {
+                $lookup: {
+                    from: "skills",
+                    localField: "candidateDetails.skills",
+                    foreignField: "_id",
+                    as: "candidateDetails.skills",
+                },
+            },
+            {
+                $lookup: {
+                    from: "interviewrounds",
+                    let: {
+                        jobId: "$job",
+                        candidateId: "$candidates.candidate",
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$job", "$$jobId"] },
+                                        { $eq: ["$candidate", "$$candidateId"] },
+                                    ],
+                                },
+                            },
+                        },
+                        { $sort: { round: 1 } },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "interviewer",
+                                foreignField: "_id",
+                                as: "interviewer",
+                            },
+                        },
+                        { $unwind: "$interviewer" },
+                    ],
+                    as: "interviewRounds",
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    candidateId: "$candidateDetails._id",
+                    fullName: "$candidateDetails.fullName",
+                    email: "$candidateDetails.email",
+                    experience: "$candidateDetails.experience",
+                    skills: "$candidateDetails.skills",
+                    currentStage: "$candidates.currentStage",
+                    interviewRounds: 1,
+                    addedAt: "$candidates.addedAt",
+                },
+            },
+            { $sort: { addedAt: -1 } },
+        ]);
+        // Fallback if no match found
+        if (!bucketData) {
+            return (0, response_utils_1.successResponse)(res, [], "No progress found for this job");
+        }
+        return (0, response_utils_1.successResponse)(res, bucketData, "Job progress retrieved successfully");
     }
     catch (err) {
         next(err);

@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { InterviewRound } from "../models/interviewRound.model";
 import { failedResponse, successResponse } from "../utils/response.utils";
 import { logger } from "../config/logger";
+import { CandidateBucket } from "../models/candidateBucket.model";
 
 export const getInterviewDetails = async (
   req: Request,
@@ -101,6 +102,19 @@ export const scheduleInterviewRound = async (
       mode,
       createdBy: req.user?._id,
     });
+
+    // 🔁 Update candidate stage in CandidateBucket
+    await CandidateBucket.updateOne(
+      {
+        job,
+        "candidates.candidate": candidate,
+      },
+      {
+        $set: {
+          "candidates.$.currentStage": "interviewing",
+        },
+      }
+    );
 
     return successResponse(res, interview, "Interview scheduled successfully");
   } catch (err) {

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { Request, Response, NextFunction } from "express";
 import { JobOpening } from "../models/jobOpening.model";
 import { successResponse, failedResponse } from "../utils/response.utils";
@@ -234,24 +234,86 @@ export const getJobProgressReport = async (
   next: NextFunction
 ) => {
   try {
-    const jobId = req.params.id;
+    const jobId = new Types.ObjectId(req.params.id);
 
-    const bucket = await CandidateBucket.findOne({ job: jobId })
-      .populate("candidates.candidate", "fullName email experience skills")
-      .lean();
+    // Aggregate bucket info with candidate and interview details
+    const bucketData = await CandidateBucket.aggregate([
+      { $match: { job: jobId } },
+      { $unwind: "$candidates" },
+      {
+        $lookup: {
+          from: "candidates",
+          localField: "candidates.candidate",
+          foreignField: "_id",
+          as: "candidateDetails",
+        },
+      },
+      { $unwind: "$candidateDetails" },
+      {
+        $lookup: {
+          from: "skills",
+          localField: "candidateDetails.skills",
+          foreignField: "_id",
+          as: "candidateDetails.skills",
+        },
+      },
+      {
+        $lookup: {
+          from: "interviewrounds",
+          let: {
+            jobId: "$job",
+            candidateId: "$candidates.candidate",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$job", "$$jobId"] },
+                    { $eq: ["$candidate", "$$candidateId"] },
+                  ],
+                },
+              },
+            },
+            { $sort: { round: 1 } },
+            {
+              $lookup: {
+                from: "users",
+                localField: "interviewer",
+                foreignField: "_id",
+                as: "interviewer",
+              },
+            },
+            { $unwind: "$interviewer" },
+          ],
+          as: "interviewRounds",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          candidateId: "$candidateDetails._id",
+          fullName: "$candidateDetails.fullName",
+          email: "$candidateDetails.email",
+          experience: "$candidateDetails.experience",
+          skills: "$candidateDetails.skills",
+          currentStage: "$candidates.currentStage",
+          interviewRounds: 1,
+          addedAt: "$candidates.addedAt",
+        },
+      },
+      { $sort: { addedAt: -1 } },
+    ]);
 
-    const interviews = await InterviewRound.find({ job: jobId })
-      .populate("candidate", "fullName")
-      .populate("interviewer", "fullName")
-      .lean();
+    // Fallback if no match found
+    if (!bucketData) {
+      return successResponse(res, [], "No progress found for this job");
+    }
 
     return successResponse(
       res,
-      {
-        bucket,
-        interviews,
-      },
-      "Job progress report"
+      bucketData,
+      "Job progress retrieved successfully"
     );
   } catch (err) {
     next(err);

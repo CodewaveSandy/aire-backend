@@ -4,6 +4,7 @@ exports.submitInterviewFeedback = exports.scheduleInterviewRound = exports.getIn
 const interviewRound_model_1 = require("../models/interviewRound.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
+const candidateBucket_model_1 = require("../models/candidateBucket.model");
 const getInterviewDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -63,6 +64,15 @@ const scheduleInterviewRound = async (req, res, next) => {
             durationMins,
             mode,
             createdBy: req.user?._id,
+        });
+        // 🔁 Update candidate stage in CandidateBucket
+        await candidateBucket_model_1.CandidateBucket.updateOne({
+            job,
+            "candidates.candidate": candidate,
+        }, {
+            $set: {
+                "candidates.$.currentStage": "interviewing",
+            },
         });
         return (0, response_utils_1.successResponse)(res, interview, "Interview scheduled successfully");
     }
