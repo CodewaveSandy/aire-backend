@@ -35,5 +35,6 @@ router.delete("/:id", (0, auth_middleware_1.authorize)("hr"), jobOpening_control
 router.get("/:id/suggestions", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.getRankedCandidates);
 router.get("/:id/progress", (0, auth_middleware_1.authorize)("hr"), jobOpening_controller_1.getJobProgressReport);
 router.post("/:id/shortlist", (0, auth_middleware_1.authorize)("hr"), candidateBucket_controller_1.createShortlistBucket);
+router.get("/:id/shortlist", (0, auth_middleware_1.authorize)("hr"), candidateBucket_controller_1.getShortlistBucket);
 exports.default = router;
 //# sourceMappingURL=jobOpening.routes.js.map
