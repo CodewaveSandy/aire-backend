@@ -95,7 +95,11 @@ export const getShortlistBucket = async (
 
     if (!bucket || bucket.length === 0) {
       logger.warn(`No candidate bucket found for job ${jobId}`);
-      return failedResponse(res, "No candidate bucket found for this job.");
+      return successResponse(
+        res,
+        [],
+        "No candidate bucket found for this job."
+      );
     }
 
     return successResponse(

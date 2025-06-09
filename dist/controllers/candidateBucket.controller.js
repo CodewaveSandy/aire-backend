@@ -72,7 +72,7 @@ const getShortlistBucket = async (req, res, next) => {
         logger_1.logger.info(`Shortlist bucket retrieved for job ${jobId}: ${bucket.length} candidates`);
         if (!bucket || bucket.length === 0) {
             logger_1.logger.warn(`No candidate bucket found for job ${jobId}`);
-            return (0, response_utils_1.failedResponse)(res, "No candidate bucket found for this job.");
+            return (0, response_utils_1.successResponse)(res, [], "No candidate bucket found for this job.");
         }
         return (0, response_utils_1.successResponse)(res, bucket, "Shortlisted candidates retrieved (aggregated)");
     }
