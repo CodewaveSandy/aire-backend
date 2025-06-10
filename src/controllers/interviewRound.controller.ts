@@ -4,6 +4,9 @@ import { failedResponse, successResponse } from "../utils/response.utils";
 import { logger } from "../config/logger";
 import { CandidateBucket } from "../models/candidateBucket.model";
 import { Types } from "mongoose";
+import { User } from "../models/user.model";
+import { createGoogleMeetEvent } from "../config/googleCalendar";
+import { Candidate } from "../models/candidate.model";
 
 export const getInterviewDetails = async (
   req: Request,
@@ -35,6 +38,7 @@ export const scheduleInterviewRound = async (
   next: NextFunction
 ) => {
   try {
+    logger.info("Scheduling new interview round");
     const {
       job,
       candidate,
@@ -44,55 +48,63 @@ export const scheduleInterviewRound = async (
       durationMins,
       mode,
     } = req.body;
+    logger.debug("Request body:", req.body);
+    logger.debug("Request user:", req.user);
 
-    // 1. Check if an interview for this round already exists
-    const existing = await InterviewRound.findOne({
-      job,
-      candidate,
-      round,
-    });
-
+    // 1. Validate round conditions
+    const existing = await InterviewRound.findOne({ job, candidate, round });
     if (existing) {
-      return failedResponse(
-        res,
-        `Round ${round} interview already scheduled for this candidate.`
+      logger.warn(
+        `Round ${round} already scheduled for job ${job} and candidate ${candidate}`
       );
+      return failedResponse(res, `Round ${round} already scheduled.`);
     }
 
-    // 2. Get all past rounds for this candidate/job
-    const pastRounds = await InterviewRound.find({ job, candidate }).sort({
-      round: 1,
-    });
-
-    // If there are earlier rounds, validate them
-    if (round > 1) {
-      const previousRound = pastRounds.find((r) => r.round === round - 1);
-
-      if (!previousRound || !previousRound.completedAt) {
-        return failedResponse(
-          res,
-          `Previous round (${round - 1}) is not yet completed.`
-        );
-      }
-
-      if (previousRound.decision !== "proceed") {
-        return failedResponse(
-          res,
-          `Candidate was not approved in round ${round - 1}.`
-        );
-      }
-    }
-
-    // 3. Prevent any scheduling if already rejected
-    const anyRejected = pastRounds.some((r) => r.decision === "reject");
-    if (anyRejected) {
-      return failedResponse(
-        res,
-        `Candidate has been rejected in a previous round.`
+    const pastRounds = await InterviewRound.find({ job, candidate });
+    if (
+      round > 1 &&
+      !pastRounds.some((r) => r.round === round - 1 && r.decision === "proceed")
+    ) {
+      logger.warn(
+        `Previous round incomplete or rejected for job ${job} and candidate ${candidate}`
       );
+      return failedResponse(res, `Previous round incomplete or rejected.`);
     }
 
-    // 4. Schedule interview
+    // 2. Get participant emails
+    const interviewerUser = await User.findById(interviewer);
+
+    const candidateUser = await Candidate.findById(candidate);
+
+    logger.info("Interviewer user:", interviewerUser?._id);
+    logger.info("Candidate user:", candidateUser?._id);
+
+    const attendees = [
+      { email: interviewerUser?.email },
+      { email: candidateUser?.email },
+      { email: "sandy.1997.gamer@gmail.com" }, // HR email
+    ].filter(Boolean) as { email: string }[];
+
+    console.log({ attendees });
+    logger.debug("Attendees:", attendees);
+
+    // 3. Create Google Meet URL (only for online)
+    let meetUrl = ""; // default empty string
+
+    if (mode === "online") {
+      meetUrl =
+        (await createGoogleMeetEvent({
+          summary: `Interview Round ${round}`,
+          description: `Interview for candidate ${candidateUser?.fullName}`,
+          startTime: new Date(scheduledAt),
+          endTime: new Date(
+            new Date(scheduledAt).getTime() + durationMins * 60 * 1000
+          ),
+        })) || ""; // fallback in case it's undefined
+      logger.debug("Google Meet URL:", meetUrl);
+    }
+
+    // 4. Create interview record
     const interview = await InterviewRound.create({
       job,
       candidate,
@@ -101,27 +113,17 @@ export const scheduleInterviewRound = async (
       scheduledAt,
       durationMins,
       mode,
-      organization: req.user?.organization,
+      interviewUrl: meetUrl,
       createdBy: req.user?._id,
-      interviewUrl:
-        req.body.interviewUrl || "https://meet.google.com/fyx-wwqm-pmr",
+      organization: req.user?.organization,
     });
-
-    // 🔁 Update candidate stage in CandidateBucket
-    await CandidateBucket.updateOne(
-      {
-        job,
-        "candidates.candidate": candidate,
-      },
-      {
-        $set: {
-          "candidates.$.currentStage": "interviewing",
-        },
-      }
+    logger.info(
+      `Interview round ${round} scheduled for candidate ${candidateUser?.fullName}`
     );
 
     return successResponse(res, interview, "Interview scheduled successfully");
   } catch (err) {
+    logger.error("Error scheduling interview round:", err);
     next(err);
   }
 };
