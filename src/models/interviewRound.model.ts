@@ -16,6 +16,7 @@ export interface IInterviewRound extends Document {
   createdBy: Types.ObjectId;
   createdAt: Date;
   organization: Types.ObjectId;
+  interviewUrl: string;
 }
 
 const interviewRoundSchema = new Schema<IInterviewRound>({
@@ -41,6 +42,15 @@ const interviewRoundSchema = new Schema<IInterviewRound>({
   completedAt: { type: Date },
   createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   createdAt: { type: Date, default: Date.now },
+  interviewUrl: {
+    type: String,
+    validate: {
+      validator: function (v: string) {
+        return /^https?:\/\/.+/i.test(v);
+      },
+      message: (props: any) => `${props.value} is not a valid URL`,
+    },
+  },
 });
 
 export const InterviewRound = model<IInterviewRound>(

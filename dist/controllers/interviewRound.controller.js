@@ -66,6 +66,7 @@ const scheduleInterviewRound = async (req, res, next) => {
             mode,
             organization: req.user?.organization,
             createdBy: req.user?._id,
+            interviewUrl: req.body.interviewUrl || "https://meet.google.com/fyx-wwqm-pmr",
         });
         // 🔁 Update candidate stage in CandidateBucket
         await candidateBucket_model_1.CandidateBucket.updateOne({

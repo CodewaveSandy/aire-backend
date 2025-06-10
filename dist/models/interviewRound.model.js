@@ -26,6 +26,15 @@ const interviewRoundSchema = new mongoose_1.Schema({
     completedAt: { type: Date },
     createdBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
     createdAt: { type: Date, default: Date.now },
+    interviewUrl: {
+        type: String,
+        validate: {
+            validator: function (v) {
+                return /^https?:\/\/.+/i.test(v);
+            },
+            message: (props) => `${props.value} is not a valid URL`,
+        },
+    },
 });
 exports.InterviewRound = (0, mongoose_1.model)("InterviewRound", interviewRoundSchema);
 //# sourceMappingURL=interviewRound.model.js.map
