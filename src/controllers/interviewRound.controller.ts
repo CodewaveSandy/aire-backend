@@ -100,6 +100,7 @@ export const scheduleInterviewRound = async (
       scheduledAt,
       durationMins,
       mode,
+      organization: req.user?.organization,
       createdBy: req.user?._id,
     });
 
@@ -176,6 +177,36 @@ export const submitInterviewFeedback = async (
       `Error submitting feedback for interview round ${req.params.id}:`,
       err
     );
+    next(err);
+  }
+};
+
+export const getInterviews = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const orgId = req.user?.organization;
+
+    logger.info(`Fetching all interviews for organization ${orgId}`);
+
+    if (!orgId) {
+      return failedResponse(res, "Organization context not found");
+    }
+
+    const interviews = await InterviewRound.find({ organization: orgId })
+      .sort({ createdAt: -1 })
+      .populate("candidate", "fullName email experience skills")
+      .populate("interviewer", "name email")
+      .populate("job", "title skills")
+      .lean();
+
+    logger.info(`Found ${interviews.length} interviews`);
+
+    return successResponse(res, interviews, "All interviews fetched");
+  } catch (err) {
+    logger.error("Error fetching interviews:", err);
     next(err);
   }
 };

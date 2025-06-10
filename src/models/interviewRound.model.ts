@@ -15,6 +15,7 @@ export interface IInterviewRound extends Document {
   completedAt?: Date;
   createdBy: Types.ObjectId;
   createdAt: Date;
+  organization: Types.ObjectId;
 }
 
 const interviewRoundSchema = new Schema<IInterviewRound>({
@@ -24,6 +25,11 @@ const interviewRoundSchema = new Schema<IInterviewRound>({
   interviewer: { type: Schema.Types.ObjectId, ref: "User", required: true },
   scheduledAt: { type: Date, required: true },
   durationMins: { type: Number, required: true },
+  organization: {
+    type: Schema.Types.ObjectId,
+    ref: "Organization",
+    required: true,
+  },
   mode: {
     type: String,
     enum: ["online", "in-person", "phone"],

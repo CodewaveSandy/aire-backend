@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.submitInterviewFeedback = exports.scheduleInterviewRound = exports.getInterviewDetails = void 0;
+exports.getInterviews = exports.submitInterviewFeedback = exports.scheduleInterviewRound = exports.getInterviewDetails = void 0;
 const interviewRound_model_1 = require("../models/interviewRound.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
@@ -63,6 +63,7 @@ const scheduleInterviewRound = async (req, res, next) => {
             scheduledAt,
             durationMins,
             mode,
+            organization: req.user?.organization,
             createdBy: req.user?._id,
         });
         // 🔁 Update candidate stage in CandidateBucket
@@ -116,4 +117,26 @@ const submitInterviewFeedback = async (req, res, next) => {
     }
 };
 exports.submitInterviewFeedback = submitInterviewFeedback;
+const getInterviews = async (req, res, next) => {
+    try {
+        const orgId = req.user?.organization;
+        logger_1.logger.info(`Fetching all interviews for organization ${orgId}`);
+        if (!orgId) {
+            return (0, response_utils_1.failedResponse)(res, "Organization context not found");
+        }
+        const interviews = await interviewRound_model_1.InterviewRound.find({ organization: orgId })
+            .sort({ createdAt: -1 })
+            .populate("candidate", "fullName email experience skills")
+            .populate("interviewer", "name email")
+            .populate("job", "title skills")
+            .lean();
+        logger_1.logger.info(`Found ${interviews.length} interviews`);
+        return (0, response_utils_1.successResponse)(res, interviews, "All interviews fetched");
+    }
+    catch (err) {
+        logger_1.logger.error("Error fetching interviews:", err);
+        next(err);
+    }
+};
+exports.getInterviews = getInterviews;
 //# sourceMappingURL=interviewRound.controller.js.map

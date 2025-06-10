@@ -10,6 +10,11 @@ const interviewRoundSchema = new mongoose_1.Schema({
     interviewer: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
     scheduledAt: { type: Date, required: true },
     durationMins: { type: Number, required: true },
+    organization: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Organization",
+        required: true,
+    },
     mode: {
         type: String,
         enum: ["online", "in-person", "phone"],

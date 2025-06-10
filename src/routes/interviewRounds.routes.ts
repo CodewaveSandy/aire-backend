@@ -3,6 +3,7 @@ import { authMiddleware, authorize } from "../middleware/auth.middleware";
 import { logger } from "../config/logger";
 import {
   getInterviewDetails,
+  getInterviews,
   scheduleInterviewRound,
   submitInterviewFeedback,
 } from "../controllers/interviewRound.controller";
@@ -18,6 +19,7 @@ router.use((req, _res, next) => {
 // All routes below require authentication (e.g., HR)
 router.use(authMiddleware);
 
+router.get("/", authorize("hr"), getInterviews);
 router.get("/:id", authorize("hr", "interviewer"), getInterviewDetails);
 
 router.post("/schedule", authorize("hr"), scheduleInterviewRound);

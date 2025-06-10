@@ -12,6 +12,7 @@ router.use((req, _res, next) => {
 });
 // All routes below require authentication (e.g., HR)
 router.use(auth_middleware_1.authMiddleware);
+router.get("/", (0, auth_middleware_1.authorize)("hr"), interviewRound_controller_1.getInterviews);
 router.get("/:id", (0, auth_middleware_1.authorize)("hr", "interviewer"), interviewRound_controller_1.getInterviewDetails);
 router.post("/schedule", (0, auth_middleware_1.authorize)("hr"), interviewRound_controller_1.scheduleInterviewRound);
 router.patch("/:id/feedback", (0, auth_middleware_1.authorize)("interviewer"), interviewRound_controller_1.submitInterviewFeedback);
