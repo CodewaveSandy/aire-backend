@@ -197,6 +197,7 @@ const getInterviews = async (req, res, next) => {
                     createdBy: 1,
                     createdAt: 1,
                     organization: 1,
+                    interviewUrl: 1,
                     interviewer: { name: 1, email: 1, _id: 1 },
                     candidate: {
                         _id: 1,
