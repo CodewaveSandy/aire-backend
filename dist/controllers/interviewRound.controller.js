@@ -4,8 +4,10 @@ exports.getInterviews = exports.submitInterviewFeedback = exports.scheduleInterv
 const interviewRound_model_1 = require("../models/interviewRound.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
-const candidateBucket_model_1 = require("../models/candidateBucket.model");
 const mongoose_1 = require("mongoose");
+const user_model_1 = require("../models/user.model");
+const googleCalendar_1 = require("../config/googleCalendar");
+const candidate_model_1 = require("../models/candidate.model");
 const getInterviewDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -26,36 +28,47 @@ const getInterviewDetails = async (req, res, next) => {
 exports.getInterviewDetails = getInterviewDetails;
 const scheduleInterviewRound = async (req, res, next) => {
     try {
+        logger_1.logger.info("Scheduling new interview round");
         const { job, candidate, round, interviewer, scheduledAt, durationMins, mode, } = req.body;
-        // 1. Check if an interview for this round already exists
-        const existing = await interviewRound_model_1.InterviewRound.findOne({
-            job,
-            candidate,
-            round,
-        });
+        logger_1.logger.debug("Request body:", req.body);
+        logger_1.logger.debug("Request user:", req.user);
+        // 1. Validate round conditions
+        const existing = await interviewRound_model_1.InterviewRound.findOne({ job, candidate, round });
         if (existing) {
-            return (0, response_utils_1.failedResponse)(res, `Round ${round} interview already scheduled for this candidate.`);
+            logger_1.logger.warn(`Round ${round} already scheduled for job ${job} and candidate ${candidate}`);
+            return (0, response_utils_1.failedResponse)(res, `Round ${round} already scheduled.`);
         }
-        // 2. Get all past rounds for this candidate/job
-        const pastRounds = await interviewRound_model_1.InterviewRound.find({ job, candidate }).sort({
-            round: 1,
-        });
-        // If there are earlier rounds, validate them
-        if (round > 1) {
-            const previousRound = pastRounds.find((r) => r.round === round - 1);
-            if (!previousRound || !previousRound.completedAt) {
-                return (0, response_utils_1.failedResponse)(res, `Previous round (${round - 1}) is not yet completed.`);
-            }
-            if (previousRound.decision !== "proceed") {
-                return (0, response_utils_1.failedResponse)(res, `Candidate was not approved in round ${round - 1}.`);
-            }
+        const pastRounds = await interviewRound_model_1.InterviewRound.find({ job, candidate });
+        if (round > 1 &&
+            !pastRounds.some((r) => r.round === round - 1 && r.decision === "proceed")) {
+            logger_1.logger.warn(`Previous round incomplete or rejected for job ${job} and candidate ${candidate}`);
+            return (0, response_utils_1.failedResponse)(res, `Previous round incomplete or rejected.`);
         }
-        // 3. Prevent any scheduling if already rejected
-        const anyRejected = pastRounds.some((r) => r.decision === "reject");
-        if (anyRejected) {
-            return (0, response_utils_1.failedResponse)(res, `Candidate has been rejected in a previous round.`);
+        // 2. Get participant emails
+        const interviewerUser = await user_model_1.User.findById(interviewer);
+        const candidateUser = await candidate_model_1.Candidate.findById(candidate);
+        logger_1.logger.info("Interviewer user:", interviewerUser?._id);
+        logger_1.logger.info("Candidate user:", candidateUser?._id);
+        const attendees = [
+            { email: interviewerUser?.email },
+            { email: candidateUser?.email },
+            { email: "sandy.1997.gamer@gmail.com" }, // HR email
+        ].filter(Boolean);
+        console.log({ attendees });
+        logger_1.logger.debug("Attendees:", attendees);
+        // 3. Create Google Meet URL (only for online)
+        let meetUrl = ""; // default empty string
+        if (mode === "online") {
+            meetUrl =
+                (await (0, googleCalendar_1.createGoogleMeetEvent)({
+                    summary: `Interview Round ${round}`,
+                    description: `Interview for candidate ${candidateUser?.fullName}`,
+                    startTime: new Date(scheduledAt),
+                    endTime: new Date(new Date(scheduledAt).getTime() + durationMins * 60 * 1000),
+                })) || ""; // fallback in case it's undefined
+            logger_1.logger.debug("Google Meet URL:", meetUrl);
         }
-        // 4. Schedule interview
+        // 4. Create interview record
         const interview = await interviewRound_model_1.InterviewRound.create({
             job,
             candidate,
@@ -64,22 +77,15 @@ const scheduleInterviewRound = async (req, res, next) => {
             scheduledAt,
             durationMins,
             mode,
-            organization: req.user?.organization,
+            interviewUrl: meetUrl,
             createdBy: req.user?._id,
-            interviewUrl: req.body.interviewUrl || "https://meet.google.com/fyx-wwqm-pmr",
+            organization: req.user?.organization,
         });
-        // 🔁 Update candidate stage in CandidateBucket
-        await candidateBucket_model_1.CandidateBucket.updateOne({
-            job,
-            "candidates.candidate": candidate,
-        }, {
-            $set: {
-                "candidates.$.currentStage": "interviewing",
-            },
-        });
+        logger_1.logger.info(`Interview round ${round} scheduled for candidate ${candidateUser?.fullName}`);
         return (0, response_utils_1.successResponse)(res, interview, "Interview scheduled successfully");
     }
     catch (err) {
+        logger_1.logger.error("Error scheduling interview round:", err);
         next(err);
     }
 };

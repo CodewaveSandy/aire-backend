@@ -13,4 +13,5 @@ logs
 uploads
 /uploads/*
 /config/*.json
-/secrets/*.json
+/secrets/*
+secrets
