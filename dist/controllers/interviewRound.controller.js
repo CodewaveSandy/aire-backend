@@ -5,6 +5,7 @@ const interviewRound_model_1 = require("../models/interviewRound.model");
 const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
 const candidateBucket_model_1 = require("../models/candidateBucket.model");
+const mongoose_1 = require("mongoose");
 const getInterviewDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -124,12 +125,93 @@ const getInterviews = async (req, res, next) => {
         if (!orgId) {
             return (0, response_utils_1.failedResponse)(res, "Organization context not found");
         }
-        const interviews = await interviewRound_model_1.InterviewRound.find({ organization: orgId })
-            .sort({ createdAt: -1 })
-            .populate("candidate", "fullName email experience skills")
-            .populate("interviewer", "name email")
-            .populate("job", "title skills")
-            .lean();
+        const interviews = await interviewRound_model_1.InterviewRound.aggregate([
+            {
+                $match: {
+                    organization: new mongoose_1.Types.ObjectId(orgId),
+                },
+            },
+            {
+                $sort: { createdAt: -1 },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "interviewer",
+                    foreignField: "_id",
+                    as: "interviewer",
+                },
+            },
+            {
+                $unwind: "$interviewer",
+            },
+            {
+                $lookup: {
+                    from: "candidates",
+                    localField: "candidate",
+                    foreignField: "_id",
+                    as: "candidate",
+                },
+            },
+            {
+                $unwind: "$candidate",
+            },
+            {
+                $lookup: {
+                    from: "skills",
+                    localField: "candidate.skills",
+                    foreignField: "_id",
+                    as: "candidate.skills",
+                },
+            },
+            {
+                $lookup: {
+                    from: "jobopenings",
+                    localField: "job",
+                    foreignField: "_id",
+                    as: "job",
+                },
+            },
+            {
+                $unwind: "$job",
+            },
+            {
+                $lookup: {
+                    from: "skills",
+                    localField: "job.skills",
+                    foreignField: "_id",
+                    as: "job.skills",
+                },
+            },
+            {
+                $project: {
+                    round: 1,
+                    scheduledAt: 1,
+                    durationMins: 1,
+                    mode: 1,
+                    feedback: 1,
+                    score: 1,
+                    decision: 1,
+                    completedAt: 1,
+                    createdBy: 1,
+                    createdAt: 1,
+                    organization: 1,
+                    interviewer: { name: 1, email: 1, _id: 1 },
+                    candidate: {
+                        _id: 1,
+                        fullName: 1,
+                        email: 1,
+                        experience: 1,
+                        skills: { _id: 1, name: 1, slug: 1 },
+                    },
+                    job: {
+                        _id: 1,
+                        title: 1,
+                        skills: { _id: 1, name: 1, slug: 1 },
+                    },
+                },
+            },
+        ]);
         logger_1.logger.info(`Found ${interviews.length} interviews`);
         return (0, response_utils_1.successResponse)(res, interviews, "All interviews fetched");
     }

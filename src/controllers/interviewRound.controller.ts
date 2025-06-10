@@ -3,6 +3,7 @@ import { InterviewRound } from "../models/interviewRound.model";
 import { failedResponse, successResponse } from "../utils/response.utils";
 import { logger } from "../config/logger";
 import { CandidateBucket } from "../models/candidateBucket.model";
+import { Types } from "mongoose";
 
 export const getInterviewDetails = async (
   req: Request,
@@ -195,12 +196,93 @@ export const getInterviews = async (
       return failedResponse(res, "Organization context not found");
     }
 
-    const interviews = await InterviewRound.find({ organization: orgId })
-      .sort({ createdAt: -1 })
-      .populate("candidate", "fullName email experience skills")
-      .populate("interviewer", "name email")
-      .populate("job", "title skills")
-      .lean();
+    const interviews = await InterviewRound.aggregate([
+      {
+        $match: {
+          organization: new Types.ObjectId(orgId),
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "interviewer",
+          foreignField: "_id",
+          as: "interviewer",
+        },
+      },
+      {
+        $unwind: "$interviewer",
+      },
+      {
+        $lookup: {
+          from: "candidates",
+          localField: "candidate",
+          foreignField: "_id",
+          as: "candidate",
+        },
+      },
+      {
+        $unwind: "$candidate",
+      },
+      {
+        $lookup: {
+          from: "skills",
+          localField: "candidate.skills",
+          foreignField: "_id",
+          as: "candidate.skills",
+        },
+      },
+      {
+        $lookup: {
+          from: "jobopenings",
+          localField: "job",
+          foreignField: "_id",
+          as: "job",
+        },
+      },
+      {
+        $unwind: "$job",
+      },
+      {
+        $lookup: {
+          from: "skills",
+          localField: "job.skills",
+          foreignField: "_id",
+          as: "job.skills",
+        },
+      },
+      {
+        $project: {
+          round: 1,
+          scheduledAt: 1,
+          durationMins: 1,
+          mode: 1,
+          feedback: 1,
+          score: 1,
+          decision: 1,
+          completedAt: 1,
+          createdBy: 1,
+          createdAt: 1,
+          organization: 1,
+          interviewer: { name: 1, email: 1, _id: 1 },
+          candidate: {
+            _id: 1,
+            fullName: 1,
+            email: 1,
+            experience: 1,
+            skills: { _id: 1, name: 1, slug: 1 },
+          },
+          job: {
+            _id: 1,
+            title: 1,
+            skills: { _id: 1, name: 1, slug: 1 },
+          },
+        },
+      },
+    ]);
 
     logger.info(`Found ${interviews.length} interviews`);
 
