@@ -7,6 +7,9 @@ import {
   scheduleInterviewRound,
   submitInterviewFeedback,
 } from "../controllers/interviewRound.controller";
+import { paginationMiddleware } from "../middleware/pagination.middleware";
+import { InterviewRound } from "../models/interviewRound.model";
+import { filterMiddleware } from "../middleware/filter.middleware";
 
 const router = Router();
 

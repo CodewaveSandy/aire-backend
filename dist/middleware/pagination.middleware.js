@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.paginationMiddleware = void 0;
-const paginationMiddleware = async (req, res, next) => {
+const paginationMiddleware = (fallbackModel) => async (req, res, next) => {
     try {
-        const model = res.locals.model;
+        const model = res.locals.model || fallbackModel;
         if (!model)
-            throw new Error("Model not defined in res.locals");
+            throw new Error("Model not defined in res.locals or fallback");
         const page = Math.max(parseInt(req.query.page || "1"), 1);
         const limit = Math.max(parseInt(req.query.limit || "10"), 1);
         const skip = (page - 1) * limit;

@@ -1,45 +1,45 @@
 import { Request, Response, NextFunction } from "express";
+import { Model } from "mongoose";
 
-export const paginationMiddleware = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const model = res.locals.model;
-    if (!model) throw new Error("Model not defined in res.locals");
+export const paginationMiddleware =
+  (fallbackModel?: Model<any>) =>
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const model = res.locals.model || fallbackModel;
+      if (!model)
+        throw new Error("Model not defined in res.locals or fallback");
 
-    const page = Math.max(parseInt((req.query.page as string) || "1"), 1);
-    const limit = Math.max(parseInt((req.query.limit as string) || "10"), 1);
-    const skip = (page - 1) * limit;
+      const page = Math.max(parseInt((req.query.page as string) || "1"), 1);
+      const limit = Math.max(parseInt((req.query.limit as string) || "10"), 1);
+      const skip = (page - 1) * limit;
 
-    const query = model
-      .find(res.locals.filterQuery || {})
-      .sort(res.locals.sortQuery || {})
-      .skip(skip)
-      .limit(limit);
+      const query = model
+        .find(res.locals.filterQuery || {})
+        .sort(res.locals.sortQuery || {})
+        .skip(skip)
+        .limit(limit);
 
-    if (res.locals.fieldProjection) {
-      query.select(res.locals.fieldProjection);
+      if (res.locals.fieldProjection) {
+        query.select(res.locals.fieldProjection);
+      }
+
+      const [results, totalCount] = await Promise.all([
+        query.exec(),
+        model.countDocuments(res.locals.filterQuery || {}),
+      ]);
+
+      res.locals.filteredData = {
+        results,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(totalCount / limit),
+          totalCount,
+        },
+      };
+
+      return next();
+    } catch (err) {
+      return next(err);
     }
-
-    const [results, totalCount] = await Promise.all([
-      query.exec(),
-      model.countDocuments(res.locals.filterQuery || {}),
-    ]);
-
-    res.locals.filteredData = {
-      results,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(totalCount / limit),
-        totalCount,
-      },
-    };
-
-    return next();
-  } catch (err) {
-    return next(err);
-  }
-};
+  };
 
