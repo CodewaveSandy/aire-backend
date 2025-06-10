@@ -3,6 +3,7 @@ import {
   registerUser,
   loginUser,
   getCurrentUser,
+  getAllInterviewers,
 } from "../controllers/user.controller";
 import { authMiddleware, authorize } from "../middleware/auth.middleware";
 import { logger } from "../config/logger";
@@ -27,6 +28,7 @@ router.post("/login", loginUser);
 // Get current user (protected route)
 router.get("/me", authMiddleware, getCurrentUser);
 router.get("/check-auth", authMiddleware, getCurrentUser);
+router.get("/interviewers", authMiddleware, getAllInterviewers);
 
 // Example of a protected route with role restriction
 router.get("/hr-only", authMiddleware, authorize("hr"), (_req, res) => {

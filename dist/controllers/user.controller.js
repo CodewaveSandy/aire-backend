@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCurrentUser = exports.getUserById = exports.loginUser = exports.registerUser = void 0;
+exports.getAllInterviewers = exports.getCurrentUser = exports.getUserById = exports.loginUser = exports.registerUser = void 0;
 const error_middleware_1 = require("../middleware/error.middleware");
 const logger_1 = require("../config/logger");
 const jwt_utils_1 = require("../utils/jwt.utils");
@@ -142,4 +142,26 @@ const getCurrentUser = async (req, res, next) => {
     }
 };
 exports.getCurrentUser = getCurrentUser;
+const getAllInterviewers = async (req, res, next) => {
+    try {
+        logger_1.logger.info("Fetching interviewers for current organization");
+        const orgId = req.user?.organization;
+        if (!orgId) {
+            (0, response_utils_1.failedResponse)(res, "Organization context not found");
+        }
+        const interviewers = await user_model_1.User.find({
+            role: "interviewer",
+            organization: orgId,
+        })
+            .select("name email")
+            .lean();
+        logger_1.logger.info(`Found ${interviewers.length} interviewers`);
+        (0, response_utils_1.successResponse)(res, interviewers, "Interviewers retrieved successfully");
+    }
+    catch (error) {
+        logger_1.logger.error("Error fetching interviewers:", error);
+        next(error);
+    }
+};
+exports.getAllInterviewers = getAllInterviewers;
 //# sourceMappingURL=user.controller.js.map

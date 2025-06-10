@@ -170,3 +170,33 @@ export const getCurrentUser = async (
   }
 };
 
+export const getAllInterviewers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    logger.info("Fetching interviewers for current organization");
+
+    const orgId = req.user?.organization;
+
+    if (!orgId) {
+      failedResponse(res, "Organization context not found");
+    }
+
+    const interviewers = await User.find({
+      role: "interviewer",
+      organization: orgId,
+    })
+      .select("name email")
+      .lean();
+
+    logger.info(`Found ${interviewers.length} interviewers`);
+
+    successResponse(res, interviewers, "Interviewers retrieved successfully");
+  } catch (error) {
+    logger.error("Error fetching interviewers:", error);
+    next(error);
+  }
+};
+
