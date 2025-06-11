@@ -9,6 +9,7 @@ const user_model_1 = require("../models/user.model");
 const candidate_model_1 = require("../models/candidate.model");
 const meeting_utls_1 = require("../utils/meeting.utls");
 const jobOpening_model_1 = require("../models/jobOpening.model");
+const email_utils_1 = require("../utils/email.utils");
 const getInterviewDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -78,6 +79,15 @@ const scheduleInterviewRound = async (req, res, next) => {
             interviewUrl: meetingUrl,
             createdBy: req.user?._id,
             organization: req.user?.organization,
+        });
+        await (0, email_utils_1.sendInterviewEmail)({
+            // toAddresses: attendees.map((a) => a.email || ""),
+            toAddresses: ["sandip.dhang@yahoo.com"],
+            subject: `Interview Round ${round} Scheduled - ${candidateUser?.fullName}`,
+            bodyHtml: `<p>Interview for <strong>${candidateUser?.fullName}</strong> is scheduled.</p>
+                 <p>Round: ${round}<br/>Mode: ${mode}<br/>Time: ${new Date(scheduledAt).toLocaleString()}<br/>
+                 URL: <a href="${interview.interviewUrl}">${interview.interviewUrl}</a></p>`,
+            bodyText: `Interview for ${candidateUser?.fullName} is scheduled.\nRound: ${round}\nMode: ${mode}\nTime: ${new Date(scheduledAt).toLocaleString()}\nURL: ${interview.interviewUrl}`,
         });
         return (0, response_utils_1.successResponse)(res, interview, "Interview scheduled successfully");
     }

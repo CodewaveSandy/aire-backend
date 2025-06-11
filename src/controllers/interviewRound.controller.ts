@@ -8,6 +8,7 @@ import { User } from "../models/user.model";
 import { Candidate } from "../models/candidate.model";
 import { createZoomMeeting } from "../utils/meeting.utls";
 import { JobOpening } from "../models/jobOpening.model";
+import { sendInterviewEmail } from "../utils/email.utils";
 
 export const getInterviewDetails = async (
   req: Request,
@@ -109,6 +110,26 @@ export const scheduleInterviewRound = async (
       interviewUrl: meetingUrl,
       createdBy: req.user?._id,
       organization: req.user?.organization,
+    });
+
+    await sendInterviewEmail({
+      // toAddresses: attendees.map((a) => a.email || ""),
+      toAddresses: ["sandip.dhang@yahoo.com"],
+      subject: `Interview Round ${round} Scheduled - ${candidateUser?.fullName}`,
+      bodyHtml: `<p>Interview for <strong>${
+        candidateUser?.fullName
+      }</strong> is scheduled.</p>
+                 <p>Round: ${round}<br/>Mode: ${mode}<br/>Time: ${new Date(
+        scheduledAt
+      ).toLocaleString()}<br/>
+                 URL: <a href="${interview.interviewUrl}">${
+        interview.interviewUrl
+      }</a></p>`,
+      bodyText: `Interview for ${
+        candidateUser?.fullName
+      } is scheduled.\nRound: ${round}\nMode: ${mode}\nTime: ${new Date(
+        scheduledAt
+      ).toLocaleString()}\nURL: ${interview.interviewUrl}`,
     });
 
     return successResponse(res, interview, "Interview scheduled successfully");
