@@ -72,9 +72,7 @@ export const extractName = (text: string): string | null => {
 };
 
 export const extractEmail = (text: string): string | null => {
-  const match = text.match(
-    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b/
-  );
+  const match = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}/);
   return match ? match[0] : null;
 };
 

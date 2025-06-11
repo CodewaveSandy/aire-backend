@@ -158,7 +158,7 @@ const parseResume = async (req, res, next) => {
 
 Resume content may include technologies used in projects or mentioned inline. Focus on developer tools, frameworks, libraries, and platforms.
 
-Return ONLY this format:
+Return ONLY JSON in this format:
 {
   "skills": [...],
   "experienceInYears": "...",
@@ -179,6 +179,7 @@ ${relevantResumeText}
         });
         const aiReply = completion.choices[0]?.message?.content || "{}";
         logger_1.logger.info("OpenAI response received.");
+        console.log({ aiReply });
         let parsedJson;
         try {
             parsedJson = JSON.parse(aiReply);
