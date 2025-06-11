@@ -73,9 +73,9 @@ export const scheduleInterviewRound = async (
 
     const hrEmail = "sandy.1997.gamer@gmail.com";
     const attendees = [
-      interviewerUser?.email,
-      candidateUser?.email,
-      hrEmail,
+      { email: interviewerUser?.email },
+      { email: candidateUser?.email },
+      { email: hrEmail },
     ].filter(Boolean);
 
     // 3. Create Zoom meeting if online
@@ -93,7 +93,7 @@ export const scheduleInterviewRound = async (
         startTime: scheduledAt,
         duration: durationMins,
         agenda: description,
-        invitees: attendees as string[],
+        invitees: attendees as { email: string }[],
       });
     }
 

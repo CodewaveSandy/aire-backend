@@ -6,7 +6,7 @@ interface CreateMeetingOptions {
   startTime: string;
   duration: number;
   agenda?: string;
-  invitees?: string[];
+  invitees?: { email: string }[];
 }
 
 export const createZoomMeeting = async ({
@@ -27,13 +27,18 @@ export const createZoomMeeting = async ({
       duration,
       timezone: "Asia/Kolkata",
       agenda,
-      invitees,
+      meeting_invitees: invitees,
+      registrants_confirmation_email: true,
+      registrants_email_notification: true,
       settings: {
         host_video: true,
         participant_video: true,
         join_before_host: false,
         mute_upon_entry: true,
         waiting_room: true,
+        registrants_confirmation_email: true,
+        registrants_email_notification: true,
+        meeting_invitees: invitees,
       },
     },
     {
