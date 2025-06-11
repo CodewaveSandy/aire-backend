@@ -17,12 +17,27 @@ import interviewRoundRoutes from "./routes/interviewRounds.routes";
 
 const app: Application = express();
 
+const allowedOrigins = [
+  "https://preview--hr-flow-ai.lovable.app",
+  "https://your-production-domain.com",
+  "http://localhost:8080",
+];
+
 // Middleware
 app.use(helmet());
 app.use(
   cors({
-    origin: "https://preview--hr-flow-ai.lovable.app", // your frontend origin
-    credentials: true, // allow cookies/auth headers
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void
+    ) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   })
 );
 app.use(express.json());

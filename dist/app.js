@@ -19,11 +19,23 @@ const organization_routes_1 = __importDefault(require("./routes/organization.rou
 const orgSkill_routes_1 = __importDefault(require("./routes/orgSkill.routes"));
 const interviewRounds_routes_1 = __importDefault(require("./routes/interviewRounds.routes"));
 const app = (0, express_1.default)();
+const allowedOrigins = [
+    "https://preview--hr-flow-ai.lovable.app",
+    "https://your-production-domain.com",
+    "http://localhost:8080",
+];
 // Middleware
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    origin: "https://preview--hr-flow-ai.lovable.app", // your frontend origin
-    credentials: true, // allow cookies/auth headers
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        }
+        else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
+    credentials: true,
 }));
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
