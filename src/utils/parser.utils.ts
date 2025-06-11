@@ -77,8 +77,10 @@ export const extractEmail = (text: string): string | null => {
 };
 
 export const extractPhone = (text: string): string | null => {
-  const match = text.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-  return match ? match[0] : null;
+  const match = text.match(
+    /(\+?\d{1,3}[\s-]?)?(\(?\d{3,5}\)?[\s-]?)?\d{3,5}[\s-]?\d{4}/
+  );
+  return match ? match[0].trim() : null;
 };
 
 export const extractRelevantSections = (text: string): string => {
@@ -147,5 +149,9 @@ export const extractRelevantSections = (text: string): string => {
   }
 
   return collected.join("\n").trim();
+};
+
+export const escapeRegExp = (text: string): string => {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractRelevantSections = exports.extractPhone = exports.extractEmail = exports.extractName = void 0;
+exports.escapeRegExp = exports.extractRelevantSections = exports.extractPhone = exports.extractEmail = exports.extractName = void 0;
 const extractName = (text) => {
     const FAMILY_LABELS = [
         "father",
@@ -65,8 +65,8 @@ const extractEmail = (text) => {
 };
 exports.extractEmail = extractEmail;
 const extractPhone = (text) => {
-    const match = text.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-    return match ? match[0] : null;
+    const match = text.match(/(\+?\d{1,3}[\s-]?)?(\(?\d{3,5}\)?[\s-]?)?\d{3,5}[\s-]?\d{4}/);
+    return match ? match[0].trim() : null;
 };
 exports.extractPhone = extractPhone;
 const extractRelevantSections = (text) => {
@@ -120,4 +120,8 @@ const extractRelevantSections = (text) => {
     return collected.join("\n").trim();
 };
 exports.extractRelevantSections = extractRelevantSections;
+const escapeRegExp = (text) => {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+exports.escapeRegExp = escapeRegExp;
 //# sourceMappingURL=parser.utils.js.map

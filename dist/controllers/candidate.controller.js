@@ -136,53 +136,86 @@ const parseResume = async (req, res, next) => {
         const name = (0, parser_utils_1.extractName)(extractedText);
         const email = (0, parser_utils_1.extractEmail)(extractedText);
         const phone = (0, parser_utils_1.extractPhone)(extractedText);
+        console.log({ extractedText });
         logger_1.logger.info(`Extracted personal info - Name: ${name || "N/A"}, Email: ${email || "N/A"}, Phone: ${phone || "N/A"}`);
         // Step 3: Anonymize
         let anonymizedText = extractedText;
         if (name)
             anonymizedText = anonymizedText.replace(new RegExp(name, "gi"), "[REDACTED_NAME]");
         if (email)
-            anonymizedText = anonymizedText.replace(new RegExp(email, "gi"), "[REDACTED_EMAIL]");
-        if (phone)
-            anonymizedText = anonymizedText.replace(new RegExp(phone, "gi"), "[REDACTED_PHONE]");
+            anonymizedText = anonymizedText.replace(new RegExp((0, parser_utils_1.escapeRegExp)(email), "gi"), "[REDACTED_EMAIL]");
+        if (phone) {
+            const escapedPhone = (0, parser_utils_1.escapeRegExp)(phone);
+            anonymizedText = anonymizedText.replace(new RegExp(escapedPhone, "gi"), "[REDACTED_PHONE]");
+        }
         // Step 4: Extract relevant content for OpenAI
-        const relevantResumeText = (0, parser_utils_1.extractRelevantSections)(anonymizedText);
+        // const relevantResumeText = extractRelevantSections(anonymizedText);
         logger_1.logger.info("Relevant sections extracted for OpenAI prompt.");
-        const prompt = `From the resume content below, extract the following in strict JSON format:
+        const prompt = `You are an expert resume parser. 
 
-- An array of technical or professional skills (omit soft skills or general terms like 'frontend development')
-- Total professional experience in years (e.g. "3.5", "4")
-- Breif description of the candidate's technical expertise that can be use as About summary
-- Location
-- Highest Education degree level (e.g. "Bachelor's", "Master's", "PhD")
+From the resume content below, extract and return the following details in **strict JSON format**:
 
-Resume content may include technologies used in projects or mentioned inline. Focus on developer tools, frameworks, libraries, and platforms.
+- "skills": An array of technical or professional skills. Include only programming languages, frameworks, developer tools, APIs, cloud platforms, databases, or technologies used in projects. 
+  ❌ Exclude: Soft skills, general terms like "frontend development", behavioral traits, or duplicate aliases (e.g., both "NodeJs" and "Node.js").
 
-Return ONLY JSON in this format:
+- "experienceInYears": Total professional experience in years, as a decimal string (e.g. "2", "3.5"). Estimate if not explicitly mentioned.
+
+- "about": A 1–2 sentence summary describing the candidate’s technical background, experience, and expertise. Focus on tech stack and what they’ve built.
+
+- "location": City and state (or country) mentioned in contact details or profile summary.
+
+- "education": Highest degree completed (e.g., "Bachelor's", "Master's", "PhD", "Diploma"). Use standardized terms even if the full degree title is long.
+
+Return ONLY a valid JSON object in the following format:
 {
   "skills": [...],
   "experienceInYears": "...",
-  about: "...",
-  location: "...",
-  education: "..."
+  "about": "...",
+  "location": "...",
+  "education": "..."
 }
+
+Do NOT include any markdown formatting, backticks, explanation, or commentary.
 
 Resume Text:
 """
-${relevantResumeText}
+${anonymizedText}
 """`;
+        console.log({ prompt, anonymizedText });
         // Step 5: Send to OpenAI
         logger_1.logger.info("Sending prompt to OpenAI...");
         const completion = await openai_1.openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [{ role: "user", content: prompt }],
         });
+        // const completion = {
+        //   choices: [
+        //     {
+        //       message: {
+        //         content: JSON.stringify({
+        //           skills: ["JavaScript", "Node.js", "React"],
+        //           experienceInYears: "5",
+        //           about:
+        //             "Experienced full-stack developer with a focus on JavaScript technologies.",
+        //           location: "San Francisco, CA",
+        //           education: "Bachelor's",
+        //         }),
+        //       },
+        //     },
+        //   ],
+        // };
         const aiReply = completion.choices[0]?.message?.content || "{}";
         logger_1.logger.info("OpenAI response received.");
-        console.log({ aiReply });
+        const cleanedJson = aiReply
+            .trim()
+            .replace(/^```json\s*/i, "")
+            .replace(/^```\s*/i, "")
+            .replace(/```$/, "")
+            .trim();
+        console.log({ cleanedJson });
         let parsedJson;
         try {
-            parsedJson = JSON.parse(aiReply);
+            parsedJson = JSON.parse(cleanedJson);
         }
         catch (err) {
             logger_1.logger.warn("Failed to parse OpenAI response. Defaulting to empty data.");
