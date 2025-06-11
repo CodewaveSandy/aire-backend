@@ -6,8 +6,9 @@ const response_utils_1 = require("../utils/response.utils");
 const logger_1 = require("../config/logger");
 const mongoose_1 = require("mongoose");
 const user_model_1 = require("../models/user.model");
-const googleCalendar_1 = require("../config/googleCalendar");
 const candidate_model_1 = require("../models/candidate.model");
+const meeting_utls_1 = require("../utils/meeting.utls");
+const jobOpening_model_1 = require("../models/jobOpening.model");
 const getInterviewDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -30,45 +31,42 @@ const scheduleInterviewRound = async (req, res, next) => {
     try {
         logger_1.logger.info("Scheduling new interview round");
         const { job, candidate, round, interviewer, scheduledAt, durationMins, mode, } = req.body;
-        logger_1.logger.debug("Request body:", req.body);
-        logger_1.logger.debug("Request user:", req.user);
-        // 1. Validate round conditions
+        // 1. Validation
         const existing = await interviewRound_model_1.InterviewRound.findOne({ job, candidate, round });
         if (existing) {
-            logger_1.logger.warn(`Round ${round} already scheduled for job ${job} and candidate ${candidate}`);
             return (0, response_utils_1.failedResponse)(res, `Round ${round} already scheduled.`);
         }
         const pastRounds = await interviewRound_model_1.InterviewRound.find({ job, candidate });
         if (round > 1 &&
             !pastRounds.some((r) => r.round === round - 1 && r.decision === "proceed")) {
-            logger_1.logger.warn(`Previous round incomplete or rejected for job ${job} and candidate ${candidate}`);
             return (0, response_utils_1.failedResponse)(res, `Previous round incomplete or rejected.`);
         }
-        // 2. Get participant emails
-        const interviewerUser = await user_model_1.User.findById(interviewer);
-        const candidateUser = await candidate_model_1.Candidate.findById(candidate);
-        logger_1.logger.info("Interviewer user:", interviewerUser?._id);
-        logger_1.logger.info("Candidate user:", candidateUser?._id);
+        // 2. Get necessary data
+        const [interviewerUser, candidateUser, jobData] = await Promise.all([
+            user_model_1.User.findById(interviewer),
+            candidate_model_1.Candidate.findById(candidate),
+            jobOpening_model_1.JobOpening.findById(job),
+        ]);
+        const hrEmail = "sandy.1997.gamer@gmail.com";
         const attendees = [
-            { email: interviewerUser?.email },
-            { email: candidateUser?.email },
-            { email: "sandy.1997.gamer@gmail.com" }, // HR email
+            interviewerUser?.email,
+            candidateUser?.email,
+            hrEmail,
         ].filter(Boolean);
-        console.log({ attendees });
-        logger_1.logger.debug("Attendees:", attendees);
-        // 3. Create Google Meet URL (only for online)
-        let meetUrl = ""; // default empty string
+        // 3. Create Zoom meeting if online
+        let meetingUrl = "";
         if (mode === "online") {
-            meetUrl =
-                (await (0, googleCalendar_1.createGoogleMeetEvent)({
-                    summary: `Interview Round ${round}`,
-                    description: `Interview for candidate ${candidateUser?.fullName}`,
-                    startTime: new Date(scheduledAt),
-                    endTime: new Date(new Date(scheduledAt).getTime() + durationMins * 60 * 1000),
-                })) || ""; // fallback in case it's undefined
-            logger_1.logger.debug("Google Meet URL:", meetUrl);
+            const topic = `Interview Round ${round} :: ${jobData?.title} :: ${candidateUser?.fullName}`;
+            const description = `Interview Details:\n\n- Round: ${round}\n- Job: ${jobData?.title}\n- Candidate: ${candidateUser?.fullName}\n- Resume: ${candidateUser?.resumeUrl || "N/A"}`;
+            meetingUrl = await (0, meeting_utls_1.createZoomMeeting)({
+                topic,
+                startTime: scheduledAt,
+                duration: durationMins,
+                agenda: description,
+                invitees: attendees,
+            });
         }
-        // 4. Create interview record
+        // 4. Save interview
         const interview = await interviewRound_model_1.InterviewRound.create({
             job,
             candidate,
@@ -77,11 +75,10 @@ const scheduleInterviewRound = async (req, res, next) => {
             scheduledAt,
             durationMins,
             mode,
-            interviewUrl: meetUrl,
+            interviewUrl: meetingUrl,
             createdBy: req.user?._id,
             organization: req.user?.organization,
         });
-        logger_1.logger.info(`Interview round ${round} scheduled for candidate ${candidateUser?.fullName}`);
         return (0, response_utils_1.successResponse)(res, interview, "Interview scheduled successfully");
     }
     catch (err) {
