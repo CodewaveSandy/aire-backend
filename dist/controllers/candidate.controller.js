@@ -14,25 +14,26 @@ const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const path_1 = __importDefault(require("path"));
 const openai_1 = require("../config/openai");
 const skill_service_1 = require("../services/skill.service");
-// import { uploadToR2 } from "../utils/r2.utils";
 const mongoose_1 = __importDefault(require("mongoose"));
 const orgSkill_model_1 = require("../models/orgSkill.model");
+const s3_utils_1 = require("../utils/s3.utils");
 // Create
 const createCandidate = async (req, res, next) => {
     try {
         let resumeUrl;
-        // if (req.file) {
-        //   logger.info("Uploading resume to R2...");
-        //   resumeUrl = await uploadToR2(req.file, req.body.fullName);
-        //   // Cleanup local file
-        //   await fs.unlink(req.file.path, (err) => {
-        //     if (err) logger.error("Failed to delete temp file:", err);
-        //   });
-        // }
+        if (req.file) {
+            logger_1.logger.info("Uploading resume to S3...");
+            resumeUrl = await (0, s3_utils_1.uploadToS3)(req.file, req.body.fullName);
+            // Cleanup local file
+            await fs_1.default.unlink(req.file.path, (err) => {
+                if (err)
+                    logger_1.logger.error("Failed to delete temp file:", err);
+            });
+        }
         const candidate = new candidate_model_1.Candidate({
             ...req.body,
             organization: new mongoose_1.default.Types.ObjectId(req.user?.organization || ""),
-            resumeUrl: "https://pub-a93aa22471974b57849917c5e1db78e5.r2.dev/Sandip%20Dhang%20-%20Resume.pdf",
+            resumeUrl,
         });
         await candidate.save();
         (0, response_utils_1.successResponse)(res, candidate, "Candidate created");

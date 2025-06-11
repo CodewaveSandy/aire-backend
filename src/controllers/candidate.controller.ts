@@ -14,9 +14,9 @@ import pdfParse from "pdf-parse";
 import path from "path";
 import { openai } from "../config/openai";
 import { resolveSkillsFromText } from "../services/skill.service";
-// import { uploadToR2 } from "../utils/r2.utils";
 import mongoose from "mongoose";
 import { OrgSkill } from "../models/orgSkill.model";
+import { uploadToS3 } from "../utils/s3.utils";
 
 // Create
 export const createCandidate = async (
@@ -27,20 +27,19 @@ export const createCandidate = async (
   try {
     let resumeUrl;
 
-    // if (req.file) {
-    //   logger.info("Uploading resume to R2...");
-    //   resumeUrl = await uploadToR2(req.file, req.body.fullName);
-    //   // Cleanup local file
-    //   await fs.unlink(req.file.path, (err) => {
-    //     if (err) logger.error("Failed to delete temp file:", err);
-    //   });
-    // }
+    if (req.file) {
+      logger.info("Uploading resume to S3...");
+      resumeUrl = await uploadToS3(req.file, req.body.fullName);
+      // Cleanup local file
+      await fs.unlink(req.file.path, (err) => {
+        if (err) logger.error("Failed to delete temp file:", err);
+      });
+    }
 
     const candidate = new Candidate({
       ...req.body,
       organization: new mongoose.Types.ObjectId(req.user?.organization || ""),
-      resumeUrl:
-        "https://pub-a93aa22471974b57849917c5e1db78e5.r2.dev/Sandip%20Dhang%20-%20Resume.pdf",
+      resumeUrl,
     });
 
     await candidate.save();
