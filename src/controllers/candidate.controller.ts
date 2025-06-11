@@ -304,6 +304,7 @@ ${anonymizedText}
         )
       )
     );
+    console.log({ resolvedSkills });
     const result = {
       name,
       email,

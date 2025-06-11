@@ -19,8 +19,6 @@ const skillSchema = new Schema<ISkill>(
     toJSON: {
       transform(_doc, ret) {
         delete ret.__v;
-        ret.id = ret._id;
-        delete ret._id;
       },
     },
   }

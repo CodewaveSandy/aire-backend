@@ -231,6 +231,7 @@ ${anonymizedText}
         logger_1.logger.info(`Resolving ${parsedJson.skills.length} skills against database...`);
         const resolvedSkills = await (0, skill_service_1.resolveSkillsFromText)(parsedJson.skills || []);
         await Promise.all(resolvedSkills.map((skill) => orgSkill_model_1.OrgSkill.findOneAndUpdate({ organization: req.user?.organization, skill: skill._id }, { isActive: true }, { upsert: true, new: true })));
+        console.log({ resolvedSkills });
         const result = {
             name,
             email,

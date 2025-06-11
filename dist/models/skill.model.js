@@ -11,8 +11,6 @@ const skillSchema = new mongoose_1.Schema({
     toJSON: {
         transform(_doc, ret) {
             delete ret.__v;
-            ret.id = ret._id;
-            delete ret._id;
         },
     },
 });
