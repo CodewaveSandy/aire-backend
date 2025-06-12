@@ -4,6 +4,7 @@ import { logger } from "../config/logger";
 import {
   getInterviewDetails,
   getInterviews,
+  getOwnInterviews,
   scheduleInterviewRound,
   submitInterviewFeedback,
 } from "../controllers/interviewRound.controller";
@@ -23,6 +24,7 @@ router.use((req, _res, next) => {
 router.use(authMiddleware);
 
 router.get("/", authorize("hr"), getInterviews);
+router.get("/me", authorize("hr", "interviewer"), getOwnInterviews);
 router.get("/:id", authorize("hr", "interviewer"), getInterviewDetails);
 
 router.post("/schedule", authorize("hr"), scheduleInterviewRound);
