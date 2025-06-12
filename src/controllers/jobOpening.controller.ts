@@ -236,7 +236,6 @@ export const getJobProgressReport = async (
   try {
     const jobId = new Types.ObjectId(req.params.id);
 
-    // Aggregate bucket info with candidate and interview details
     const bucketData = await CandidateBucket.aggregate([
       { $match: { job: jobId } },
       { $unwind: "$candidates" },
@@ -285,6 +284,16 @@ export const getJobProgressReport = async (
               },
             },
             { $unwind: "$interviewer" },
+            { $unset: "interviewer.password" }, // 👈 remove password explicitly
+            {
+              $addFields: {
+                interviewer: {
+                  _id: "$interviewer._id",
+                  name: "$interviewer.name",
+                  email: "$interviewer.email",
+                },
+              },
+            },
           ],
           as: "interviewRounds",
         },
@@ -305,7 +314,6 @@ export const getJobProgressReport = async (
       { $sort: { addedAt: -1 } },
     ]);
 
-    // Fallback if no match found
     if (!bucketData) {
       return successResponse(res, [], "No progress found for this job");
     }

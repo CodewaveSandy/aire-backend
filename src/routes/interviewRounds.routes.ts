@@ -30,7 +30,7 @@ router.get("/:id", authorize("hr", "interviewer"), getInterviewDetails);
 router.post("/schedule", authorize("hr"), scheduleInterviewRound);
 router.patch(
   "/:id/feedback",
-  authorize("interviewer"),
+  authorize("hr", "interviewer"),
   submitInterviewFeedback
 );
 

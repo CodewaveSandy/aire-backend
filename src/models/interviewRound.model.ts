@@ -17,6 +17,10 @@ export interface IInterviewRound extends Document {
   createdAt: Date;
   organization: Types.ObjectId;
   interviewUrl: string;
+  techSkillScore?: {
+    [skillId: string]: number; // skillId is Skill._id (as string)
+  };
+  softSkillScore?: number;
 }
 
 const interviewRoundSchema = new Schema<IInterviewRound>({
@@ -50,6 +54,23 @@ const interviewRoundSchema = new Schema<IInterviewRound>({
       },
       message: (props: any) => `${props.value} is not a valid URL`,
     },
+  },
+  // ✅ NEW FIELD: techSkillScore (dynamic object of skillId: score)
+  techSkillScore: {
+    type: Map,
+    of: {
+      type: Number,
+      min: 0,
+      max: 5,
+    },
+    default: {},
+  },
+
+  // ✅ NEW FIELD: softSkillScore (0 to 5)
+  softSkillScore: {
+    type: Number,
+    min: 0,
+    max: 5,
   },
 });
 

@@ -16,6 +16,6 @@ router.get("/", (0, auth_middleware_1.authorize)("hr"), interviewRound_controlle
 router.get("/me", (0, auth_middleware_1.authorize)("hr", "interviewer"), interviewRound_controller_1.getOwnInterviews);
 router.get("/:id", (0, auth_middleware_1.authorize)("hr", "interviewer"), interviewRound_controller_1.getInterviewDetails);
 router.post("/schedule", (0, auth_middleware_1.authorize)("hr"), interviewRound_controller_1.scheduleInterviewRound);
-router.patch("/:id/feedback", (0, auth_middleware_1.authorize)("interviewer"), interviewRound_controller_1.submitInterviewFeedback);
+router.patch("/:id/feedback", (0, auth_middleware_1.authorize)("hr", "interviewer"), interviewRound_controller_1.submitInterviewFeedback);
 exports.default = router;
 //# sourceMappingURL=interviewRounds.routes.js.map

@@ -10,20 +10,105 @@ const candidate_model_1 = require("../models/candidate.model");
 const meeting_utls_1 = require("../utils/meeting.utls");
 const jobOpening_model_1 = require("../models/jobOpening.model");
 const email_utils_1 = require("../utils/email.utils");
+const interviewRound_service_1 = require("../services/interviewRound.service");
 const getInterviewDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const interview = await interviewRound_model_1.InterviewRound.findById(id)
-            .populate("candidate", "fullName email experience skills")
-            .populate("interviewer", "name email")
-            .populate("job", "title skills")
-            .lean();
-        if (!interview) {
-            return (0, response_utils_1.failedResponse)(res, "Interview not found.");
+        const orgId = req.user?.organization;
+        logger_1.logger.info(`Fetching interview details for ${id} in org ${orgId}`);
+        if (!orgId) {
+            (0, response_utils_1.failedResponse)(res, "Organization context not found");
         }
-        return (0, response_utils_1.successResponse)(res, interview, "Interview details fetched");
+        const [interview] = await interviewRound_model_1.InterviewRound.aggregate([
+            {
+                $match: {
+                    _id: new mongoose_1.Types.ObjectId(id),
+                    organization: new mongoose_1.Types.ObjectId(orgId),
+                },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "interviewer",
+                    foreignField: "_id",
+                    as: "interviewer",
+                },
+            },
+            { $unwind: "$interviewer" },
+            {
+                $lookup: {
+                    from: "candidates",
+                    localField: "candidate",
+                    foreignField: "_id",
+                    as: "candidate",
+                },
+            },
+            { $unwind: "$candidate" },
+            {
+                $lookup: {
+                    from: "skills",
+                    localField: "candidate.skills",
+                    foreignField: "_id",
+                    as: "candidate.skills",
+                },
+            },
+            {
+                $lookup: {
+                    from: "jobopenings",
+                    localField: "job",
+                    foreignField: "_id",
+                    as: "job",
+                },
+            },
+            { $unwind: "$job" },
+            {
+                $lookup: {
+                    from: "skills",
+                    localField: "job.skills",
+                    foreignField: "_id",
+                    as: "job.skills",
+                },
+            },
+            {
+                $project: {
+                    round: 1,
+                    scheduledAt: 1,
+                    durationMins: 1,
+                    mode: 1,
+                    feedback: 1,
+                    score: 1,
+                    decision: 1,
+                    techSkillScore: 1,
+                    softSkillScore: 1,
+                    completedAt: 1,
+                    createdBy: 1,
+                    createdAt: 1,
+                    organization: 1,
+                    interviewUrl: 1,
+                    interviewer: { name: 1, email: 1, _id: 1 },
+                    candidate: {
+                        _id: 1,
+                        fullName: 1,
+                        email: 1,
+                        experience: 1,
+                        resumeUrl: 1,
+                        skills: { _id: 1, name: 1, slug: 1 },
+                    },
+                    job: {
+                        _id: 1,
+                        title: 1,
+                        skills: { _id: 1, name: 1, slug: 1 },
+                    },
+                },
+            },
+        ]);
+        if (!interview) {
+            (0, response_utils_1.failedResponse)(res, "Interview not found");
+        }
+        (0, response_utils_1.successResponse)(res, interview, "Interview details fetched");
     }
     catch (err) {
+        logger_1.logger.error(`Error fetching interview ${req.params.id}:`, err);
         next(err);
     }
 };
@@ -100,31 +185,46 @@ exports.scheduleInterviewRound = scheduleInterviewRound;
 const submitInterviewFeedback = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { feedback, score, decision } = req.body;
+        const { feedback, decision, techSkillScore, softSkillScore } = req.body;
         logger_1.logger.info(`Submitting feedback for interview round ${id}`);
         const interview = await interviewRound_model_1.InterviewRound.findById(id);
         if (!interview) {
-            return (0, response_utils_1.failedResponse)(res, "Interview not found");
+            (0, response_utils_1.failedResponse)(res, "Interview not found");
         }
-        // Rule 1: Only assigned interviewer can submit feedback
-        if (interview.interviewer.toString() !== req?.user?._id.toString()) {
-            return (0, response_utils_1.failedResponse)(res, "Only the assigned interviewer can submit feedback");
+        if (interview?.interviewer.toString() !== req?.user?._id.toString()) {
+            (0, response_utils_1.failedResponse)(res, "Only the assigned interviewer can submit feedback");
         }
-        // Rule 2: Must be at least 30 mins after scheduled time
         const now = new Date();
-        const scheduledAt = new Date(interview.scheduledAt);
-        const timeDiffMins = (now.getTime() - scheduledAt.getTime()) / (1000 * 60);
-        if (timeDiffMins < 30) {
-            return (0, response_utils_1.failedResponse)(res, `Feedback can only be submitted after 30 minutes of scheduled time. Please wait ${Math.ceil(30 - timeDiffMins)} more minutes.`);
-        }
-        // Update feedback
-        interview.feedback = feedback;
-        interview.score = score;
-        interview.decision = decision;
-        interview.completedAt = now;
-        await interview.save();
+        const timeDiffMins = (now.getTime() -
+            new Date(interview?.scheduledAt || new Date()).getTime()) /
+            60000;
+        // if (timeDiffMins < 30) {
+        //   const remainingMins = Math.max(0, 30 - timeDiffMins);
+        //   const hours = Math.floor(remainingMins / 60);
+        //   const minutes = Math.round(remainingMins % 60);
+        //   const timeLeftMessage =
+        //     hours > 0
+        //       ? `${hours} hour${hours !== 1 ? "s" : ""} and ${minutes} minute${
+        //           minutes !== 1 ? "s" : ""
+        //         }`
+        //       : `${minutes} minute${minutes !== 1 ? "s" : ""}`;
+        //   failedResponse(
+        //     res,
+        //     `Feedback can only be submitted after 30 minutes of scheduled time. Please wait ${timeLeftMessage}.`
+        //   );
+        // }
+        const score = (0, interviewRound_service_1.calculateInterviewScore)(techSkillScore, softSkillScore);
+        Object.assign(interview || {}, {
+            feedback,
+            techSkillScore: techSkillScore || {},
+            softSkillScore: softSkillScore ?? null,
+            score,
+            decision,
+            completedAt: now,
+        });
+        await interview?.save();
         logger_1.logger.info(`Feedback submitted for interview round ${id}`);
-        return (0, response_utils_1.successResponse)(res, interview, "Feedback submitted");
+        (0, response_utils_1.successResponse)(res, interview, "Feedback submitted");
     }
     catch (err) {
         logger_1.logger.error(`Error submitting feedback for interview round ${req.params.id}:`, err);

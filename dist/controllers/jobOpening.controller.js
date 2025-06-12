@@ -194,7 +194,6 @@ exports.getRankedCandidates = getRankedCandidates;
 const getJobProgressReport = async (req, res, next) => {
     try {
         const jobId = new mongoose_1.Types.ObjectId(req.params.id);
-        // Aggregate bucket info with candidate and interview details
         const bucketData = await candidateBucket_model_1.CandidateBucket.aggregate([
             { $match: { job: jobId } },
             { $unwind: "$candidates" },
@@ -243,6 +242,16 @@ const getJobProgressReport = async (req, res, next) => {
                             },
                         },
                         { $unwind: "$interviewer" },
+                        { $unset: "interviewer.password" }, // 👈 remove password explicitly
+                        {
+                            $addFields: {
+                                interviewer: {
+                                    _id: "$interviewer._id",
+                                    name: "$interviewer.name",
+                                    email: "$interviewer.email",
+                                },
+                            },
+                        },
                     ],
                     as: "interviewRounds",
                 },
@@ -262,7 +271,6 @@ const getJobProgressReport = async (req, res, next) => {
             },
             { $sort: { addedAt: -1 } },
         ]);
-        // Fallback if no match found
         if (!bucketData) {
             return (0, response_utils_1.successResponse)(res, [], "No progress found for this job");
         }
