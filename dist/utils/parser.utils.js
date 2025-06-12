@@ -1,6 +1,83 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.escapeRegExp = exports.extractRelevantSections = exports.extractPhone = exports.extractEmail = exports.extractName = void 0;
+exports.escapeRegExp = exports.extractRelevantSections = exports.extractPhone = exports.extractEmail = exports.extractName = exports.extractTextFromFile = void 0;
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const pdf_parse_1 = __importDefault(require("pdf-parse"));
+const textract_1 = __importDefault(require("textract"));
+const mammoth = __importStar(require("mammoth"));
+const extractTextFromFile = async (filePath) => {
+    const ext = path_1.default.extname(filePath).toLowerCase();
+    let extractedText = "";
+    // if (ext === ".pdf") {
+    //   const fileBuffer = fs.readFileSync(filePath);
+    //   const pdfData = await pdfParse(fileBuffer);
+    //   extractedText = pdfData.text;
+    // } else {
+    //   extractedText = await new Promise<string>((resolve, reject) => {
+    //     textract.fromFileWithPath(filePath, (err, text) => {
+    //       if (err || !text) return reject(err || new Error("Empty text"));
+    //       resolve(text);
+    //     });
+    //   });
+    // }
+    if (ext === ".pdf") {
+        const fileBuffer = fs_1.default.readFileSync(filePath);
+        const pdfData = await (0, pdf_parse_1.default)(fileBuffer);
+        extractedText = pdfData.text;
+    }
+    else if (ext === ".docx") {
+        const result = await mammoth.extractRawText({ path: filePath });
+        extractedText = result.value;
+    }
+    else {
+        extractedText = await new Promise((resolve, reject) => {
+            textract_1.default.fromFileWithPath(filePath, (err, text) => {
+                if (err || !text)
+                    return reject(err || new Error("Empty text"));
+                resolve(text);
+            });
+        });
+    }
+    return extractedText;
+};
+exports.extractTextFromFile = extractTextFromFile;
 const extractName = (text) => {
     const FAMILY_LABELS = [
         "father",
@@ -22,13 +99,12 @@ const extractName = (text) => {
     ];
     const familyRegex = new RegExp(`\\b(${FAMILY_LABELS.join("|")})\\b`, "i");
     const headingRegex = new RegExp(`^(${HEADER_LABELS.join("|")})$`, "i");
-    const normalized = text.replace(/\s+/g, " ").trim();
-    // 1. Label-based match
-    const labelMatch = normalized.match(/\b(name|full name|first name)\s*[:\-–]\s*([A-Z][^\n\r\t\f\v]+?)(?=\b(father|mother|guardian|spouse|husband|wife)\b|$)/i);
+    // ✅ Fix 1: Better label-based match (line-by-line)
+    const labelMatch = text.match(/^\s*(name|full name|first name)\s*[:\-–]\s*([A-Z][A-Za-z\s.-]{1,60})$/im);
     if (labelMatch) {
         return labelMatch[2].trim();
     }
-    // 2. Line-by-line analysis
+    // Line-by-line analysis
     const lines = text
         .split(/\r?\n/)
         .map((line) => line.trim())
@@ -39,12 +115,10 @@ const extractName = (text) => {
             !familyRegex.test(clean) &&
             !headingRegex.test(clean.toLowerCase()) &&
             /^[A-Z][a-zA-Z().\s-]{2,}$/.test(clean) &&
-            clean.split(" ").length <= 5 // human name limit
-        ) {
+            clean.split(" ").length <= 5) {
             return clean;
         }
     }
-    // 3. Fallback: word sequence before heading keyword
     const headingIndex = lines.findIndex((line) => headingRegex.test(line.toLowerCase()));
     if (headingIndex > 0) {
         const candidate = lines[headingIndex - 1];

@@ -7,6 +7,7 @@ import {
   extractName,
   extractPhone,
   extractRelevantSections,
+  extractTextFromFile,
 } from "../utils/parser.utils";
 import { logger } from "../config/logger";
 import fs from "fs";
@@ -18,6 +19,8 @@ import { resolveSkillsFromText } from "../services/skill.service";
 import mongoose from "mongoose";
 import { OrgSkill } from "../models/orgSkill.model";
 import { uploadToS3 } from "../utils/s3.utils";
+import * as mammoth from "mammoth";
+import { transformText } from "../utils/common.utils";
 
 // Create
 export const createCandidate = async (
@@ -142,25 +145,11 @@ export const parseResume = async (
       failedResponse(res, "No resume file uploaded");
     }
 
+    // Step 1: Extract raw text
     const filePath = req?.file?.path || "";
     const ext = path.extname(filePath).toLowerCase();
-    let extractedText = "";
-
     logger.info(`Parsing resume from file: ${filePath} (type: ${ext})`);
-
-    // Step 1: Extract raw text
-    if (ext === ".pdf") {
-      const fileBuffer = fs.readFileSync(filePath);
-      const pdfData = await pdfParse(fileBuffer);
-      extractedText = pdfData.text;
-    } else {
-      extractedText = await new Promise<string>((resolve, reject) => {
-        textract.fromFileWithPath(filePath, (err, text) => {
-          if (err || !text) return reject(err || new Error("Empty text"));
-          resolve(text);
-        });
-      });
-    }
+    const extractedText = await extractTextFromFile(filePath);
 
     logger.info("Text extraction complete. Cleaning up uploaded file.");
     fs.unlink(filePath, () => {}); // Cleanup uploaded file
@@ -182,7 +171,7 @@ export const parseResume = async (
     let anonymizedText = extractedText;
     if (name)
       anonymizedText = anonymizedText.replace(
-        new RegExp(name, "gi"),
+        new RegExp(escapeRegExp(name), "gi"),
         "[REDACTED_NAME]"
       );
     if (email)
@@ -202,22 +191,23 @@ export const parseResume = async (
     // const relevantResumeText = extractRelevantSections(anonymizedText);
     logger.info("Relevant sections extracted for OpenAI prompt.");
 
-    const prompt = `You are an expert resume parser. 
+    const prompt = `You are an expert resume parser. The resume may belong to any domain, not just tech.
 
-From the resume content below, extract and return the following details in **strict JSON format**:
+From the text below, extract the following in **strict JSON format**:
 
-- "skills": An array of technical or professional skills. Include only programming languages, frameworks, developer tools, APIs, cloud platforms, databases, or technologies used in projects. 
-  ❌ Exclude: Soft skills, general terms like "frontend development", behavioral traits, or duplicate aliases (e.g., both "NodeJs" and "Node.js").
+- "skills": List of professional, technical, or domain-specific skills (tools, platforms, methods, software, certifications). Exclude soft skills or personality traits.
 
-- "experienceInYears": Total professional experience in years, as a decimal string (e.g. "2", "3.5"). Estimate if not explicitly mentioned.
+- "experienceInYears": Count professional experience in **decimal years** based on actual job start and end dates found in the resume. 
+   - Use the earliest listed job start date and latest listed job end date (or current year if listed as "Present").
+   - Output must be the number of years (e.g., "21.1").
 
-- "about": A 1–2 sentence summary describing the candidate’s technical background, experience, and expertise. Focus on tech stack and what they’ve built.
+- "about": 1–2 sentences describing the candidate’s career background, industries, and strengths.
 
-- "location": City and state (or country) mentioned in contact details or profile summary.
+- "location": City and state (or country) found in job locations or contact info.
 
-- "education": Highest degree completed (e.g., "Bachelor's", "Master's", "PhD", "Diploma"). Use standardized terms even if the full degree title is long.
+- "education": The **highest academic qualification** mentioned (e.g., "Bachelor of Arts in Marketing", "Diploma in Mechanical Engineering", "Certificate in Data Analytics"). Keep the full degree title as written in the resume.
 
-Return ONLY a valid JSON object in the following format:
+Return **only** a valid JSON object like:
 {
   "skills": [...],
   "experienceInYears": "...",
@@ -226,7 +216,7 @@ Return ONLY a valid JSON object in the following format:
   "education": "..."
 }
 
-Do NOT include any markdown formatting, backticks, explanation, or commentary.
+Do NOT include explanations, markdown, or extra commentary.
 
 Resume Text:
 """
@@ -306,8 +296,8 @@ ${anonymizedText}
     );
     console.log({ resolvedSkills });
     const result = {
-      name,
-      email,
+      name: transformText(name || "", "capitalize"),
+      email: transformText(email || "", "lowercase"),
       phone,
       skills: resolvedSkills,
       experienceInYears: parsedJson.experienceInYears || "0",

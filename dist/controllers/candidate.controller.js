@@ -9,14 +9,13 @@ const response_utils_1 = require("../utils/response.utils");
 const parser_utils_1 = require("../utils/parser.utils");
 const logger_1 = require("../config/logger");
 const fs_1 = __importDefault(require("fs"));
-const textract_1 = __importDefault(require("textract"));
-const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const path_1 = __importDefault(require("path"));
 const openai_1 = require("../config/openai");
 const skill_service_1 = require("../services/skill.service");
 const mongoose_1 = __importDefault(require("mongoose"));
 const orgSkill_model_1 = require("../models/orgSkill.model");
 const s3_utils_1 = require("../utils/s3.utils");
+const common_utils_1 = require("../utils/common.utils");
 // Create
 const createCandidate = async (req, res, next) => {
     try {
@@ -111,25 +110,11 @@ const parseResume = async (req, res, next) => {
             logger_1.logger.warn("No resume file uploaded");
             (0, response_utils_1.failedResponse)(res, "No resume file uploaded");
         }
+        // Step 1: Extract raw text
         const filePath = req?.file?.path || "";
         const ext = path_1.default.extname(filePath).toLowerCase();
-        let extractedText = "";
         logger_1.logger.info(`Parsing resume from file: ${filePath} (type: ${ext})`);
-        // Step 1: Extract raw text
-        if (ext === ".pdf") {
-            const fileBuffer = fs_1.default.readFileSync(filePath);
-            const pdfData = await (0, pdf_parse_1.default)(fileBuffer);
-            extractedText = pdfData.text;
-        }
-        else {
-            extractedText = await new Promise((resolve, reject) => {
-                textract_1.default.fromFileWithPath(filePath, (err, text) => {
-                    if (err || !text)
-                        return reject(err || new Error("Empty text"));
-                    resolve(text);
-                });
-            });
-        }
+        const extractedText = await (0, parser_utils_1.extractTextFromFile)(filePath);
         logger_1.logger.info("Text extraction complete. Cleaning up uploaded file.");
         fs_1.default.unlink(filePath, () => { }); // Cleanup uploaded file
         // Step 2: Extract personal info
@@ -141,7 +126,7 @@ const parseResume = async (req, res, next) => {
         // Step 3: Anonymize
         let anonymizedText = extractedText;
         if (name)
-            anonymizedText = anonymizedText.replace(new RegExp(name, "gi"), "[REDACTED_NAME]");
+            anonymizedText = anonymizedText.replace(new RegExp((0, parser_utils_1.escapeRegExp)(name), "gi"), "[REDACTED_NAME]");
         if (email)
             anonymizedText = anonymizedText.replace(new RegExp((0, parser_utils_1.escapeRegExp)(email), "gi"), "[REDACTED_EMAIL]");
         if (phone) {
@@ -151,22 +136,23 @@ const parseResume = async (req, res, next) => {
         // Step 4: Extract relevant content for OpenAI
         // const relevantResumeText = extractRelevantSections(anonymizedText);
         logger_1.logger.info("Relevant sections extracted for OpenAI prompt.");
-        const prompt = `You are an expert resume parser. 
+        const prompt = `You are an expert resume parser. The resume may belong to any domain, not just tech.
 
-From the resume content below, extract and return the following details in **strict JSON format**:
+From the text below, extract the following in **strict JSON format**:
 
-- "skills": An array of technical or professional skills. Include only programming languages, frameworks, developer tools, APIs, cloud platforms, databases, or technologies used in projects. 
-  ❌ Exclude: Soft skills, general terms like "frontend development", behavioral traits, or duplicate aliases (e.g., both "NodeJs" and "Node.js").
+- "skills": List of professional, technical, or domain-specific skills (tools, platforms, methods, software, certifications). Exclude soft skills or personality traits.
 
-- "experienceInYears": Total professional experience in years, as a decimal string (e.g. "2", "3.5"). Estimate if not explicitly mentioned.
+- "experienceInYears": Count professional experience in **decimal years** based on actual job start and end dates found in the resume. 
+   - Use the earliest listed job start date and latest listed job end date (or current year if listed as "Present").
+   - Output must be the number of years (e.g., "21.1").
 
-- "about": A 1–2 sentence summary describing the candidate’s technical background, experience, and expertise. Focus on tech stack and what they’ve built.
+- "about": 1–2 sentences describing the candidate’s career background, industries, and strengths.
 
-- "location": City and state (or country) mentioned in contact details or profile summary.
+- "location": City and state (or country) found in job locations or contact info.
 
-- "education": Highest degree completed (e.g., "Bachelor's", "Master's", "PhD", "Diploma"). Use standardized terms even if the full degree title is long.
+- "education": The **highest academic qualification** mentioned (e.g., "Bachelor of Arts in Marketing", "Diploma in Mechanical Engineering", "Certificate in Data Analytics"). Keep the full degree title as written in the resume.
 
-Return ONLY a valid JSON object in the following format:
+Return **only** a valid JSON object like:
 {
   "skills": [...],
   "experienceInYears": "...",
@@ -175,7 +161,7 @@ Return ONLY a valid JSON object in the following format:
   "education": "..."
 }
 
-Do NOT include any markdown formatting, backticks, explanation, or commentary.
+Do NOT include explanations, markdown, or extra commentary.
 
 Resume Text:
 """
@@ -233,8 +219,8 @@ ${anonymizedText}
         await Promise.all(resolvedSkills.map((skill) => orgSkill_model_1.OrgSkill.findOneAndUpdate({ organization: req.user?.organization, skill: skill._id }, { isActive: true }, { upsert: true, new: true })));
         console.log({ resolvedSkills });
         const result = {
-            name,
-            email,
+            name: (0, common_utils_1.transformText)(name || "", "capitalize"),
+            email: (0, common_utils_1.transformText)(email || "", "lowercase"),
             phone,
             skills: resolvedSkills,
             experienceInYears: parsedJson.experienceInYears || "0",

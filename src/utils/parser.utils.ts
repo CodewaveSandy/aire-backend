@@ -1,3 +1,47 @@
+import fs from "fs";
+import path from "path";
+import pdfParse from "pdf-parse";
+import textract from "textract";
+import * as mammoth from "mammoth";
+
+export const extractTextFromFile = async (
+  filePath: string
+): Promise<string> => {
+  const ext = path.extname(filePath).toLowerCase();
+  let extractedText = "";
+
+  // if (ext === ".pdf") {
+  //   const fileBuffer = fs.readFileSync(filePath);
+  //   const pdfData = await pdfParse(fileBuffer);
+  //   extractedText = pdfData.text;
+  // } else {
+  //   extractedText = await new Promise<string>((resolve, reject) => {
+  //     textract.fromFileWithPath(filePath, (err, text) => {
+  //       if (err || !text) return reject(err || new Error("Empty text"));
+  //       resolve(text);
+  //     });
+  //   });
+  // }
+
+  if (ext === ".pdf") {
+    const fileBuffer = fs.readFileSync(filePath);
+    const pdfData = await pdfParse(fileBuffer);
+    extractedText = pdfData.text;
+  } else if (ext === ".docx") {
+    const result = await mammoth.extractRawText({ path: filePath });
+    extractedText = result.value;
+  } else {
+    extractedText = await new Promise<string>((resolve, reject) => {
+      textract.fromFileWithPath(filePath, (err, text) => {
+        if (err || !text) return reject(err || new Error("Empty text"));
+        resolve(text);
+      });
+    });
+  }
+
+  return extractedText;
+};
+
 export const extractName = (text: string): string | null => {
   const FAMILY_LABELS = [
     "father",
@@ -17,20 +61,19 @@ export const extractName = (text: string): string | null => {
     "overview",
     "declaration",
   ];
+
   const familyRegex = new RegExp(`\\b(${FAMILY_LABELS.join("|")})\\b`, "i");
   const headingRegex = new RegExp(`^(${HEADER_LABELS.join("|")})$`, "i");
 
-  const normalized = text.replace(/\s+/g, " ").trim();
-
-  // 1. Label-based match
-  const labelMatch = normalized.match(
-    /\b(name|full name|first name)\s*[:\-–]\s*([A-Z][^\n\r\t\f\v]+?)(?=\b(father|mother|guardian|spouse|husband|wife)\b|$)/i
+  // ✅ Fix 1: Better label-based match (line-by-line)
+  const labelMatch = text.match(
+    /^\s*(name|full name|first name)\s*[:\-–]\s*([A-Z][A-Za-z\s.-]{1,60})$/im
   );
   if (labelMatch) {
     return labelMatch[2].trim();
   }
 
-  // 2. Line-by-line analysis
+  // Line-by-line analysis
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -38,19 +81,17 @@ export const extractName = (text: string): string | null => {
 
   for (const line of lines.slice(0, 10)) {
     const clean = line.replace(/[^A-Za-z\s().-]/g, "").trim();
-
     if (
       clean.length > 0 &&
       !familyRegex.test(clean) &&
       !headingRegex.test(clean.toLowerCase()) &&
       /^[A-Z][a-zA-Z().\s-]{2,}$/.test(clean) &&
-      clean.split(" ").length <= 5 // human name limit
+      clean.split(" ").length <= 5
     ) {
       return clean;
     }
   }
 
-  // 3. Fallback: word sequence before heading keyword
   const headingIndex = lines.findIndex((line) =>
     headingRegex.test(line.toLowerCase())
   );
