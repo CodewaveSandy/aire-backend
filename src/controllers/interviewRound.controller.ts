@@ -289,6 +289,7 @@ export const getInterviews = async (
             fullName: 1,
             email: 1,
             experience: 1,
+            resumeUrl: 1,
             skills: { _id: 1, name: 1, slug: 1 },
           },
           job: {
@@ -405,6 +406,7 @@ export const getOwnInterviews = async (
             fullName: 1,
             email: 1,
             experience: 1,
+            resumeUrl: 1,
             skills: { _id: 1, name: 1, slug: 1 },
           },
           job: {

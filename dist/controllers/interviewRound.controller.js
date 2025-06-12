@@ -217,6 +217,7 @@ const getInterviews = async (req, res, next) => {
                         fullName: 1,
                         email: 1,
                         experience: 1,
+                        resumeUrl: 1,
                         skills: { _id: 1, name: 1, slug: 1 },
                     },
                     job: {
@@ -323,6 +324,7 @@ const getOwnInterviews = async (req, res, next) => {
                         fullName: 1,
                         email: 1,
                         experience: 1,
+                        resumeUrl: 1,
                         skills: { _id: 1, name: 1, slug: 1 },
                     },
                     job: {
