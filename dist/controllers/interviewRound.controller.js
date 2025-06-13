@@ -11,6 +11,7 @@ const meeting_utls_1 = require("../utils/meeting.utls");
 const jobOpening_model_1 = require("../models/jobOpening.model");
 const email_utils_1 = require("../utils/email.utils");
 const interviewRound_service_1 = require("../services/interviewRound.service");
+const skill_model_1 = require("../models/skill.model");
 const getInterviewDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -105,7 +106,59 @@ const getInterviewDetails = async (req, res, next) => {
         if (!interview) {
             (0, response_utils_1.failedResponse)(res, "Interview not found");
         }
-        (0, response_utils_1.successResponse)(res, interview, "Interview details fetched");
+        const { job, candidate, round } = interview;
+        // Step 2: Fetch all previous rounds for this candidate and job
+        const previousRounds = await interviewRound_model_1.InterviewRound.find({
+            job: job._id,
+            candidate: candidate._id,
+            organization: orgId,
+            round: { $lt: round },
+        })
+            .select("round feedback score decision techSkillScore softSkillScore completedAt createdBy")
+            .sort({ round: 1 })
+            .lean();
+        // Step 3: Add to response
+        // Step 3: Enhance techSkillScore with skill names
+        const allSkillIds = new Set();
+        for (const round of previousRounds) {
+            if (round.techSkillScore) {
+                Object.keys(round.techSkillScore).forEach((skillId) => {
+                    allSkillIds.add(skillId);
+                });
+            }
+        }
+        const skills = await skill_model_1.Skill.find({
+            _id: { $in: Array.from(allSkillIds).map((id) => new mongoose_1.Types.ObjectId(id)) },
+        })
+            .select("_id name")
+            .lean();
+        const skillMap = {};
+        skills.forEach((skill) => {
+            skillMap[skill._id.toString()] = { name: skill.name };
+        });
+        const enrichedPreviousRounds = previousRounds.map((round) => {
+            const newTechScore = {};
+            if (round.techSkillScore) {
+                for (const [skillId, score] of Object.entries(round.techSkillScore)) {
+                    const skill = skillMap[skillId];
+                    if (skill) {
+                        newTechScore[skillId] = {
+                            name: skill.name,
+                            score,
+                        };
+                    }
+                }
+            }
+            return {
+                ...round,
+                techSkillScore: newTechScore,
+            };
+        });
+        const response = {
+            ...interview,
+            previousRoundsFeedback: enrichedPreviousRounds,
+        };
+        (0, response_utils_1.successResponse)(res, response, "Interview details fetched");
     }
     catch (err) {
         logger_1.logger.error(`Error fetching interview ${req.params.id}:`, err);

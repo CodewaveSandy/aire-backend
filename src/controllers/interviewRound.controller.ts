@@ -10,6 +10,7 @@ import { createZoomMeeting } from "../utils/meeting.utls";
 import { JobOpening } from "../models/jobOpening.model";
 import { sendInterviewEmail } from "../utils/email.utils";
 import { calculateInterviewScore } from "../services/interviewRound.service";
+import { ISkill, Skill } from "../models/skill.model";
 
 export const getInterviewDetails = async (
   req: Request,
@@ -114,7 +115,70 @@ export const getInterviewDetails = async (
       failedResponse(res, "Interview not found");
     }
 
-    successResponse(res, interview, "Interview details fetched");
+    const { job, candidate, round } = interview;
+
+    // Step 2: Fetch all previous rounds for this candidate and job
+    const previousRounds = await InterviewRound.find({
+      job: job._id,
+      candidate: candidate._id,
+      organization: orgId,
+      round: { $lt: round },
+    })
+      .select(
+        "round feedback score decision techSkillScore softSkillScore completedAt createdBy"
+      )
+      .sort({ round: 1 })
+      .lean();
+
+    // Step 3: Add to response
+    // Step 3: Enhance techSkillScore with skill names
+    const allSkillIds = new Set<string>();
+
+    for (const round of previousRounds) {
+      if (round.techSkillScore) {
+        Object.keys(round.techSkillScore).forEach((skillId) => {
+          allSkillIds.add(skillId);
+        });
+      }
+    }
+
+    const skills = await Skill.find({
+      _id: { $in: Array.from(allSkillIds).map((id) => new Types.ObjectId(id)) },
+    })
+      .select("_id name")
+      .lean();
+
+    const skillMap: Record<string, { name: string }> = {};
+    skills.forEach((skill) => {
+      skillMap[skill._id.toString()] = { name: skill.name };
+    });
+
+    const enrichedPreviousRounds = previousRounds.map((round) => {
+      const newTechScore: Record<string, { name: string; score: number }> = {};
+
+      if (round.techSkillScore) {
+        for (const [skillId, score] of Object.entries(round.techSkillScore)) {
+          const skill = skillMap[skillId];
+          if (skill) {
+            newTechScore[skillId] = {
+              name: skill.name,
+              score,
+            };
+          }
+        }
+      }
+
+      return {
+        ...round,
+        techSkillScore: newTechScore,
+      };
+    });
+    const response = {
+      ...interview,
+      previousRoundsFeedback: enrichedPreviousRounds,
+    };
+
+    successResponse(res, response, "Interview details fetched");
   } catch (err) {
     logger.error(`Error fetching interview ${req.params.id}:`, err);
     next(err);

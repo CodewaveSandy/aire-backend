@@ -6,6 +6,7 @@ export interface ISkill extends Document {
   aliases: string[];
   createdAt: Date;
   updatedAt: Date;
+  isDeleted: boolean;
 }
 
 const skillSchema = new Schema<ISkill>(
@@ -13,6 +14,7 @@ const skillSchema = new Schema<ISkill>(
     name: { type: String, required: true, unique: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true },
     aliases: { type: [String], default: [] }, // ✅ new field
+    isDeleted: { type: Boolean, default: false }, // ✅ new field
   },
   {
     timestamps: true,

@@ -147,7 +147,7 @@ exports.updateSkill = updateSkill;
 const deleteSkill = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const deleted = await skill_model_1.Skill.findByIdAndDelete(id);
+        const deleted = await orgSkill_model_1.OrgSkill.findByIdAndUpdate({ skill: id, organization: req.user?.organization }, { isActive: false }, { new: true });
         if (!deleted)
             return (0, response_utils_1.failedResponse)(res, "Skill not found");
         (0, response_utils_1.successResponse)(res, deleted, "Skill deleted");

@@ -203,7 +203,11 @@ export const deleteSkill = async (
 ) => {
   try {
     const { id } = req.params;
-    const deleted = await Skill.findByIdAndDelete(id);
+    const deleted = await OrgSkill.findByIdAndUpdate(
+      { skill: id, organization: req.user?.organization },
+      { isActive: false },
+      { new: true }
+    );
     if (!deleted) return failedResponse(res, "Skill not found");
     successResponse(res, deleted, "Skill deleted");
   } catch (error) {
